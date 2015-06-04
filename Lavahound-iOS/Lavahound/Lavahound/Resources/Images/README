@@ -1,0 +1,7 @@
+You can optimize a PNG in-place by running this:
+
+./optipng-mac-i386 -o7 whatever.png
+
+or, or 64-bit:
+
+./optipng-mac-x64 -o7 whatever.png
