@@ -40,9 +40,17 @@ static NSTimeInterval const kKeyboardAnimationDuration = 0.3;
 
 #pragma mark -
 #pragma mark UIViewController
++ (UIColor *)colorFromRGB:(NSUInteger)RGB alpha:(CGFloat)alpha {
+    return [UIColor colorWithRed:((CGFloat)((RGB & 0xFF0000) >> 16)) / 255.0
+                           green:((CGFloat)((RGB & 0xFF00) >> 8)) / 255.0
+                            blue:((CGFloat)(RGB & 0xFF)) / 255.0
+                           alpha:alpha];
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    
+    self.view.backgroundColor = [SignUpController colorFromRGB:0xAD2A01 alpha:1];
     
 //    UIImageView *backgroundImageView = [[[UIImageView alloc] initWithImage:TTIMAGE(@"bundle://signUpBG.png")] autorelease];    
 //    backgroundImageView.frame = CGRectMake(0, 0, 320, 460);

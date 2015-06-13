@@ -25,3 +25,7 @@ build/Release
 # Dependency directory
 # https://www.npmjs.org/doc/misc/npm-faq.html#should-i-check-my-node_modules-folder-into-git
 node_modules
+Lavahound-iOS/facebook-ios-sdk/sample
+Lavahound-iOS/facebook-ios-sdk/test
+Lavahound-iOS/three20/samples
+lavahound-node-server/hunt_photos

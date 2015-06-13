@@ -105,19 +105,12 @@ static Constants *kSharedInstance = nil;
 
 - (NSString *)apiEndpointAbsoluteUrlPrefix {
     // Production:
-    //return @"http://app.lavahound.com";
+    //return @"http://107.21.239.118:3000/api/";
     
     // QA:
     //return @"http://ec2-107-20-20-21.compute-1.amazonaws.com";
     
-    // maa work laptop:
-    //return @"http://10.0.1.197:9393";
-    // maa home laptop:
-    //return @"http://192.168.1.5:9393";
-    // maa home desktop:
-    // return @"http://10.0.1.3:9393";    
     // dan work laptop:
-    // return @"http://10.0.1.5:3000";
     return @"http://localhost:3000/api/";
     // return @"http://lavahound.dev";
 }

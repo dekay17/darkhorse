@@ -41,6 +41,7 @@ CREATE TABLE photo (
     image_file_name varchar NOT NULL,
     title varchar NOT NULL,
     description varchar NOT NULL,
+    found_msg varchar NOT NULL,
     points bigint NOT NULL,
     latitude DOUBLE PRECISION NOT NULL,
     longitude DOUBLE PRECISION NOT NULL,    
