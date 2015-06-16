@@ -137,32 +137,46 @@ static NSString * const CELL_IDENTIFIER_B   = @"CellIdentifierDark";
         [CellBackground release];
     }
     
-    if (indexPath.row <5)
+    if (indexPath.row <2)
     {
         [TheCell setAccessoryType:UITableViewCellAccessoryDisclosureIndicator];
         [TheCell setSelectionStyle:UITableViewCellSelectionStyleBlue];
-        
         if (indexPath.row == 0)
-        {
-            [TheCell.textLabel setText:@"My Points"];
-        }
-        else if (indexPath.row == 1)
-        {
-            [TheCell.textLabel setText:@"My Profile"];
-        }
-        else if (indexPath.row == 2)
         {
             [TheCell.textLabel setText:@"About Lavahound"];
         }
-        else if (indexPath.row == 3)
-        {
-            [TheCell.textLabel setText:@"Admin"];
-        }
-        else if (indexPath.row == 4)
+//        else if (indexPath.row == 1)
+//        {
+//            [TheCell.textLabel setText:@"My Profile"];
+//        }
+        
+        else if (indexPath.row == 1)
         {
             [TheCell setAccessoryType:UITableViewCellAccessoryNone];
             [TheCell .textLabel setText:@"Logout"];
         }
+        
+//        if (indexPath.row == 0)
+//        {
+//            [TheCell.textLabel setText:@"My Points"];
+//        }
+//        else if (indexPath.row == 1)
+//        {
+//            [TheCell.textLabel setText:@"My Profile"];
+//        }
+//        else if (indexPath.row == 2)
+//        {
+//            [TheCell.textLabel setText:@"About Lavahound"];
+//        }
+//        else if (indexPath.row == 3)
+//        {
+//            [TheCell.textLabel setText:@"Admin"];
+//        }
+//        else if (indexPath.row == 4)
+//        {
+//            [TheCell setAccessoryType:UITableViewCellAccessoryNone];
+//            [TheCell .textLabel setText:@"Logout"];
+//        }
     }
     else
     {
@@ -181,38 +195,59 @@ static NSString * const CELL_IDENTIFIER_B   = @"CellIdentifierDark";
 
     [tableView deselectRowAtIndexPath:indexPath animated:TRUE];
     
-    if (indexPath.row == 0)
-    {
-        MyPoints = [[ScoreboardController alloc] initWithUser];
-        
-        [self.navigationController pushViewController:MyPoints animated:TRUE];
-        
-        [MyPoints release];
-    }
-    else if (indexPath.row == 1)
-    {
-        [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://profile"] applyAnimated:YES]];
-    }
-    else if (indexPath.row == 2)
-    {
-        [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://about"] applyAnimated:YES]];
-    }
-    else if (indexPath.row == 3)
-    {
-        AdminView = [[AdminController alloc] init];
-        [self.navigationController pushViewController:AdminView animated:TRUE];
-    }
-    else if (indexPath.row == 4)
-    {
-        UIAlertView * Alert = [[UIAlertView alloc] initWithTitle:nil
-                                                         message:@"Really sign out?"
-                                                        delegate:self
-                                               cancelButtonTitle:@"Cancel"
-                                               otherButtonTitles:@"Confirm", nil];
-        
-        [Alert show];
-        [Alert release];
-    }
+//        if (indexPath.row == 1)
+//        {
+//            [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://profile"] applyAnimated:YES]];
+//        }
+//        else
+            if (indexPath.row == 0)
+        {
+            [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://about"] applyAnimated:YES]];
+        }
+        else if (indexPath.row == 1)
+        {
+            UIAlertView * Alert = [[UIAlertView alloc] initWithTitle:nil
+                                                             message:@"Really sign out?"
+                                                            delegate:self
+                                                   cancelButtonTitle:@"Cancel"
+                                                   otherButtonTitles:@"Confirm", nil];
+    
+            [Alert show];
+            [Alert release];
+        }
+    
+//    if (indexPath.row == 0)
+//    {
+//        MyPoints = [[ScoreboardController alloc] initWithUser];
+//        
+//        [self.navigationController pushViewController:MyPoints animated:TRUE];
+//        
+//        [MyPoints release];
+//    }
+//    else if (indexPath.row == 1)
+//    {
+//        [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://profile"] applyAnimated:YES]];
+//    }
+//    else if (indexPath.row == 2)
+//    {
+//        [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://about"] applyAnimated:YES]];
+//    }
+//    else if (indexPath.row == 3)
+//    {
+//        AdminView = [[AdminController alloc] init];
+//        [self.navigationController pushViewController:AdminView animated:TRUE];
+//    }
+//    else if (indexPath.row == 4)
+//    {
+//        UIAlertView * Alert = [[UIAlertView alloc] initWithTitle:nil
+//                                                         message:@"Really sign out?"
+//                                                        delegate:self
+//                                               cancelButtonTitle:@"Cancel"
+//                                               otherButtonTitles:@"Confirm", nil];
+//        
+//        [Alert show];
+//        [Alert release];
+//    }
 }
 
 #pragma mark - UIAlertViewDelegate

@@ -28,7 +28,7 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-var port = process.env.PORT || 3000;        // set our port
+var port = process.env.PORT || 3001;        // set our port
 
 // ROUTES FOR OUR API
 // =============================================================================

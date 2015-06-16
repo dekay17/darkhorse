@@ -9,44 +9,50 @@ var cloudfront_base = "https://s3.amazonaws.com/lavahound-hunts/";
 var fs         = require('fs');
 var sha1       = require('sha1');
 
+var publicUrls = ["/sign-in", "/sign-up"]
+
 // middleware to use for all requests
 router.use(function(req, res, next) {
     // do logging
     console.log(req.path);
+
+    console.log("API:", req.query.api_token);
+
+    if (publicUrls.indexOf(req.path) < 0){
+        pg.connect(connectionString, function(err, client, done) {
+          if(err) {
+            console.log(err);
+            return console.error('error fetching client from pool', err);
+          }
+          client.query('SELECT account_id from account where remember_me_token = $1', [req.query.api_token], function(err, result) {
+            //call `done()` to release the client back to the pool 
+            // console.log(err, result);
+            
+            if(err) {
+                // console.log(query, err);
+                return res.status(404).json({"error_message": err});    
+            }
+            done();
+            if (result.rows.length != 1)
+                return res.status(403).json({"error_message": "Please login to use the app"});    
+            else{
+                console.log("ACCOUNT_ID: ",result.rows[0].account_id)
+                req.account_id = result.rows[0].account_id;
+            }
+            next();
+          });
+        });
+    }else{
+        //public url
+        next();
+    }
     // console.log("QUERY:",req.query);
     // console.log("BODY:",req.body);
 
+    // add check for logged in
 
-    next(); // make sure we go to the next routes and don't stop here
+ // make sure we go to the next routes and don't stop here
 });
-
-// load hunt data
-// var oduHunt, pennHunt, oleMissHunt;
-// fs.readFile('hunts/odu.json', 'utf8', function (err, data) {
-//   if (err) throw err;  
-//   oduHunt = JSON.parse(data);
-// });
-// fs.readFile('hunts/penn.json', 'utf8', function (err, data) {
-//   if (err) throw err;  
-//   pennHunt = JSON.parse(data);
-// });
-// fs.readFile('hunts/olemiss.json', 'utf8', function (err, data) {
-//   if (err) throw err;  
-//   oleMissHunt = JSON.parse(data);
-// });
-
-// var oduPhotos, pennPhotos;
-// fs.readFile('huntPhotos/odu.json', 'utf8', function (err, data) {
-//   if (err) throw err;  
-//   oduPhotos = JSON.parse(data);
-// });
-// fs.readFile('huntPhotos/penn.json', 'utf8', function (err, data) {
-//   if (err) throw err;  
-//   pennPhotos = JSON.parse(data);
-// });
-
-var foundImages = [28];
-var userPoints = 20;
 
 // lavahound test routes
 router.get('/sign-in', function(req, res) {
@@ -93,6 +99,7 @@ router.get('/sign-up', function(req, res) {
     var email = req.query.email_address;
     console.log(displayName);
     var hash = sha1(password);
+    var token = sha1(email);
     console.log(email, hash);
 
 
@@ -100,7 +107,7 @@ router.get('/sign-up', function(req, res) {
 
         // SQL Query > Select Data
         var query = client.query("insert into account(account_id, name, email, password, remember_me_token) " +
-            "values(nextval('account_id_seq'), $1, $2, $3, $4)", [displayName, email, hash, hash]);
+            "values(nextval('account_id_seq'), $1, $2, $3, $4)", [displayName, email, hash, token]);
 
         // After all data is returned, close connection and return results
         query.on('end', function() {
@@ -113,7 +120,7 @@ router.get('/sign-up', function(req, res) {
             console.log(err);
             return res.status(400).json({"error_message": err});    
         }else{
-            return res.json({ api_token: hash, total_points: 0 });   
+            return res.json({ api_token: token, total_points: 0 });   
         }
     });
 });
@@ -122,7 +129,8 @@ router.get('/places/nearby', function(req, res) {
     var results = [];
 
     // lng=-122.0304785247098&lat=37.33240841337464
-    console.log(req.query.lat);
+    if (!req.query.lat || !req.query.lng)
+        return res.json({"error_message": "Please turn on location services to play"});    
     // Get a Postgres client from the connection pool
     pg.connect(connectionString, function(err, client, done) {
 
@@ -135,7 +143,7 @@ router.get('/places/nearby', function(req, res) {
         console.log(query);
         // Stream results back one row at a time
         query.on('row', function(row) {
-            row.image_url = cloudfront_base + row.image_file_name;
+            row.image_url = cloudfront_base + "sm_" + row.image_file_name;
             row.proximity_description = row.miles + " miles";
             results.push(row);
         });
@@ -179,16 +187,18 @@ router.get('/hunts', function(req, res) {
         var placeQuery = client.query("select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude " +
                 "from place p where p.place_id = " + req.query.place_id);
         placeQuery.on('row', function(row) {
+            row.image_url = cloudfront_base + row.image_file_name;
             results.place = row;
         });
 
         // SQL Query > Select Data
         var huntQuery = client.query("select h.*, count(hp.photo_id) as total_count, count(pf.photo_id) as found_count  " +
-                "from hunt h, hunt_photo hp left outer join photo_found pf on pf.photo_id = hp.photo_id and pf.account_id = 1 where h.hunt_id = $1 and h.hunt_id = hp.hunt_id " +
-                "group by h.hunt_id", [req.query.place_id]);
+                "from hunt h, hunt_photo hp left outer join photo_found pf on pf.photo_id = hp.photo_id and pf.account_id = $1 where h.place_id = $2 and h.hunt_id = hp.hunt_id " +
+                "group by h.hunt_id", [req.account_id, req.query.place_id]);
         // console.log(query);
         // Stream results back one row at a time
         huntQuery.on('row', function(row) {
+            row.image_url = cloudfront_base + row.image_file_name;
             results.hunts.push(row);
         });
 
@@ -237,9 +247,10 @@ router.get('/hunts/:hunt_id/photos', function(req, res) {
     pg.connect(connectionString, function(err, client, done) {
 
         // SQL Query > Select Data
-        var query = client.query("select p.*, round((point(p.longitude, p.latitude) <@> point($1, $2))::numeric, 2) as miles " +
-                "from photo p, hunt_photo hp where hp.hunt_id = $3 and hp.photo_id = p.photo_id order by round((point(p.longitude, p.latitude) <@> point($4, $5))::numeric, 3)", [lng, lat, req.params.hunt_id, lng, lat]);
-
+        var query = client.query("select p.*, round((point(p.longitude, p.latitude) <@> point($1,$2))::numeric, 2) as miles, count(pf1.photo_id) as found from photo p " +
+            "left outer join photo_found pf1 on pf1.photo_id = p.photo_id and pf1.account_id = $3, hunt_photo hp where hp.hunt_id = $4 and hp.photo_id = p.photo_id " +
+            "group by p.photo_id order by round((point(p.longitude, p.latitude) <@> point($5,$6))::numeric, 3)", [lng, lat,req.account_id, req.params.hunt_id, lng, lat]);
+        console.log(query);
         // Stream results back one row at a time
         query.on('row', function(row) {
             row.image_url = cloudfront_base + "sm_" + row.image_file_name;
@@ -262,20 +273,6 @@ router.get('/hunts/:hunt_id/photos', function(req, res) {
 
     });
 
-    // var photos = pennPhotos
-    // if (req.params.hunt_id != 1)
-    //     photos = oduPhotos;  
-
-    // var huntPhotos = photos.photos;
-    // console.log(foundImages);    
-    // for (var x=0;x<foundImages.length;x++){
-    //     for (var y=0;y<huntPhotos.length;y++){
-    //         // console.log(foundImages[x] == huntPhotos[y].photo_id, foundImages[x] , huntPhotos[y].photo_id);
-    //         if (foundImages[x] == huntPhotos[y].photo_id )
-    //             huntPhotos[y].found = 1;
-    //     }
-    // }
-    // res.json(photos);  
 });
 
 router.get('/scoreboard/hunt', function(req, res) {
@@ -322,12 +319,10 @@ router.get('/photos/show/:photo_id', function(req, res) {
     pg.connect(connectionString, function(err, client, done) {
 
         // SQL Query > Select Data
-        var query = client.query("select p.*, count(pf.photo_id) as times_found, count(pf1.photo_id) as found from photo p " +
-            "left outer join photo_found pf on pf.photo_id = p.photo_id " +
-            "left outer join photo_found pf1 on pf1.photo_id = p.photo_id and pf1.account_id = $1 " +
-            "group by p.photo_id", req.params.photo_id);
-
-        console.log(query);
+        var query = client.query("select p.*, count(pf.photo_id) as times_found, count(pf1.photo_id) >0 as found from photo p left outer join photo_found pf on pf.photo_id = p.photo_id " +
+            "left outer join photo_found pf1 on pf1.photo_id = $1 and pf1.account_id = $2 WHERE p.photo_id = $3 group by p.photo_id", [parseInt(req.params.photo_id), parseInt(req.account_id), parseInt(req.params.photo_id)]);
+        // console.log(query);
+        // var query = client.query("select p.* from photo p");
         // Stream results back one row at a time
         query.on('row', function(row) {
             row.image_url = cloudfront_base + row.image_file_name;
@@ -344,9 +339,8 @@ router.get('/photos/show/:photo_id', function(req, res) {
 
         // Handle Errors
         if(err) {
-          console.log(err);
+          console.log("Error:", err);
         }
-
     });
 });
 
@@ -355,16 +349,75 @@ router.get('/', function(req, res) {
     res.json({ message: 'hooray! welcome to our api!' });   
 });
 
-router.post('/photos/found/:photo_id', function(req, res) {
-    // foundImages
-    foundImages.push(parseInt(req.params.photo_id));
-    userPoints += 10
-    if (req.params.photo_id == 29)
-        res.json({ total_points: userPoints.toString(), message: "CHALLENGE: It is a custom to throw a pennie on Ben Franklin's grave.  Give it a try!", points: "10" });   
-    else if (req.params.photo_id == 3)
-            res.json({ total_points: userPoints.toString(), message: "\"LOVE\" can also be found in places like NYC, Kansas, Utah, Japan, China, and Kytgzstan. There is also a version showing the word in Italian (AMOR) in Milan, and one in Hebew (AHAVA) in Jerusalem.", points: "10" });   
-    else
-        res.json({ total_points: userPoints.toString(), message: "Awesome job, keep playing to earn more points!", points: "10" });   
+router.get('/photos/found/:photo_id', function(req, res) {
+    var points = 0;
+    var found_msg = "";
+
+
+// var Client = require('pg').Client;
+
+// var client = new Client(connectionString);
+// client.connect();
+
+// var rollback = function(client, err) {
+//   //terminating a client connection will
+//   //automatically rollback any uncommitted transactions
+//   //so while it's not technically mandatory to call
+//   //ROLLBACK it is cleaner and more correct
+//   client.query('ROLLBACK', function() {
+//     client.end();
+//   });
+//   return res.status(400).json({"error_message": err});
+// };
+
+// client.query('BEGIN', function(err, result) {
+//   if(err) return rollback(client, err);
+//   client.query('insert into photo_found(photo_id, account_id) values($1, $2)', [req.params.photo_id, req.account_id], function (err, results) {
+//     if(err) return rollback(client, err);
+//     client.query('select points, found_msg from photo p where p.photo_id = $1', req.params.photo_id, function (err, results) {
+//       if(err) return rollback(client, err);
+//       //disconnect after successful commit
+//       client.query('COMMIT', client.end.bind(client));
+//         points = results[0].points;
+//         found_msg = results[0].found_msg;
+//         console.log("Points: ", points, found_msg);
+//         res.json({ total_points: points.toString(), message: found_msg, points: points.toString() });        
+//     });
+//   });
+// });
+
+    console.log("Found: ", req.params.photo_id, req.account_id);
+    // http://baudehlo.com/2014/04/28/node-js-multiple-query-transactions/
+    pg.connect(connectionString, function(err, client, done) {
+        if(err) {
+            console.log("step1:",err);
+            return res.status(400).json({"error_message": err});
+        }else{
+            client.query("insert into photo_found(photo_id, account_id) values($1, $2)", [req.params.photo_id, req.account_id], function (err, results) {
+                if(err) {
+                    console.log("step2:",err);
+                    // done();
+                    return res.status(400).json({"error_message": err}); 
+                }else{
+                // client.query("select sum(points) from photo p, photo_found pf where p.photo_id = pf.photo_id and pf.account_id = $1", req.account_id, function (err, results) {
+                    client.query('select points, found_msg from photo p where p.photo_id = $1', [req.params.photo_id], function (err, results) {
+                        if(err) {
+                            // console.log(query, err);
+                            // done();
+                            return res.status(400).json({"error_message": err});  
+                        }else{
+                            console.log("results", results);
+                            points = results.rows[0].points;
+                            found_msg = results.rows[0].found_msg;
+                            console.log("Points: ", points, found_msg);
+                            res.json({ total_points: points.toString(), message: found_msg, points: points.toString() });   
+                        }
+                        done();
+                    });
+                }
+            });
+        }
+    });
 });
 
 
@@ -378,6 +431,7 @@ router.get('/users/show', function(req, res) {
 
 
 router.get('/users/points', function(req, res) {
+    var totalpoints = 0;
     //     NSNumber *_total;
     // NSNumber *_finder;
     // NSNumber *_hider;
@@ -385,72 +439,32 @@ router.get('/users/points', function(req, res) {
     // NSString *_rank;    
     // NSString *_rankPercentile;    
     // NSString *_rankDescription
-    res.json({points: { total: 10, finder: 1, hider: 2, royalties: 10, rank: "3", rank_percentile: "5%", rank_description: "Rockstar" }});   
+    pg.connect(connectionString, function(err, client, done) {
+
+        // SQL Query > Select Data
+        var query = client.query("select sum(points) as totalpoints from photo p, photo_found pf where p.photo_id = pf.photo_id and pf.account_id = $1", [req.account_id]);
+
+        // console.log(query);
+        // var query = client.query("select p.* from photo p");
+        // Stream results back one row at a time
+        query.on('row', function(row) {
+            totalpoints = row.totalpoints;
+        });
+
+        // After all data is returned, close connection and return results
+        query.on('end', function() {
+            client.end();
+            // return res.json(results);
+            res.json({points: { total: totalpoints, finder: totalpoints, hider: 0, royalties: 0, rank: "3", rank_percentile: "5%", rank_description: "Rockstar" }});   
+
+        });
+
+        // Handle Errors
+        if(err) {
+          console.log("Error:", err);
+        }
+    });
+
 });
-
-
-// on routes that end in /bears
-// ----------------------------------------------------
-// router.route('/bears')
-
-//     // create a bear (accessed at POST http://localhost:8080/api/bears)
-//     .post(function(req, res) {
-        
-//         var bear = new Bear();      // create a new instance of the Bear model
-//         console.log("creating bear:", req.body.name);
-//         bear.name = req.body.name;  // set the bears name (comes from the request)
-
-//         // save the bear and check for errors
-//         bear.save(function(err) {
-//             if (err)
-//                 res.send(err);
-
-//             res.json({ message: 'Bear created!' });
-//         });
-        
-//     })
-
-// // get all the bears (accessed at GET http://localhost:8080/api/bears)
-//     .get(function(req, res) {
-//         Bear.find(function(err, bears) {
-//             if (err)
-//                 res.send(err);
-
-//             res.json(bears);
-//         });
-//     })
-
-//  // update the bear with this id (accessed at PUT http://localhost:8080/api/bears/:bear_id)
-//     .put(function(req, res) {
-
-//         // use our bear model to find the bear we want
-//         Bear.findById(req.params.bear_id, function(err, bear) {
-
-//             if (err)
-//                 res.send(err);
-
-//             bear.name = req.body.name;  // update the bears info
-
-//             // save the bear
-//             bear.save(function(err) {
-//                 if (err)
-//                     res.send(err);
-
-//                 res.json({ message: 'Bear updated!' });
-//             });
-
-//         });
-//      })
-
-//      .delete(function(req, res) {
-//         Bear.remove({
-//             _id: req.params.bear_id
-//         }, function(err, bear) {
-//             if (err)
-//                 res.send(err);
-
-//             res.json({ message: 'Successfully deleted' });
-//     })
-// });
 
 module.exports = router;

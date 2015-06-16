@@ -330,6 +330,12 @@
 		699D861F139960FF00519488 /* aboutBG@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 699D861D139960FF00519488 /* aboutBG@2x.png */; };
 		699D862213997C1000519488 /* aboutPageBG.png in Resources */ = {isa = PBXBuildFile; fileRef = 699D862013997C1000519488 /* aboutPageBG.png */; };
 		699D862313997C1000519488 /* aboutPageBG@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 699D862113997C1000519488 /* aboutPageBG@2x.png */; };
+		69BC7CF01B2F2945005CA835 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69BC7CEA1B2F2945005CA835 /* Security.framework */; };
+		69BC7CF11B2F2945005CA835 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69BC7CEB1B2F2945005CA835 /* SystemConfiguration.framework */; };
+		69BC7CF21B2F2945005CA835 /* libc++.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 69BC7CEC1B2F2945005CA835 /* libc++.dylib */; };
+		69BC7CF31B2F2945005CA835 /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 69BC7CED1B2F2945005CA835 /* libz.dylib */; };
+		69BC7CF41B2F2945005CA835 /* Fabric.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69BC7CEE1B2F2945005CA835 /* Fabric.framework */; };
+		69BC7CF51B2F2945005CA835 /* Crashlytics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69BC7CEF1B2F2945005CA835 /* Crashlytics.framework */; };
 		69DC849B138FE3780026946F /* buttonCamera.png in Resources */ = {isa = PBXBuildFile; fileRef = 69DC8499138FE3780026946F /* buttonCamera.png */; };
 		69DC849C138FE3780026946F /* buttonCamera@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 69DC849A138FE3780026946F /* buttonCamera@2x.png */; };
 		69DC84A5138FF8010026946F /* flippedPhotoBG.png in Resources */ = {isa = PBXBuildFile; fileRef = 69DC84A1138FF8010026946F /* flippedPhotoBG.png */; };
@@ -1025,6 +1031,12 @@
 		699D861D139960FF00519488 /* aboutBG@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "aboutBG@2x.png"; sourceTree = "<group>"; };
 		699D862013997C1000519488 /* aboutPageBG.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = aboutPageBG.png; sourceTree = "<group>"; };
 		699D862113997C1000519488 /* aboutPageBG@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "aboutPageBG@2x.png"; sourceTree = "<group>"; };
+		69BC7CEA1B2F2945005CA835 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		69BC7CEB1B2F2945005CA835 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
+		69BC7CEC1B2F2945005CA835 /* libc++.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++.dylib"; path = "usr/lib/libc++.dylib"; sourceTree = SDKROOT; };
+		69BC7CED1B2F2945005CA835 /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = usr/lib/libz.dylib; sourceTree = SDKROOT; };
+		69BC7CEE1B2F2945005CA835 /* Fabric.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Fabric.framework; sourceTree = "<group>"; };
+		69BC7CEF1B2F2945005CA835 /* Crashlytics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Crashlytics.framework; sourceTree = "<group>"; };
 		69DC8499138FE3780026946F /* buttonCamera.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = buttonCamera.png; sourceTree = "<group>"; };
 		69DC849A138FE3780026946F /* buttonCamera@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "buttonCamera@2x.png"; sourceTree = "<group>"; };
 		69DC84A1138FF8010026946F /* flippedPhotoBG.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = flippedPhotoBG.png; sourceTree = "<group>"; };
@@ -1131,10 +1143,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				0CE5AE16137EC0C500D3F9DD /* MessageUI.framework in Frameworks */,
+				69BC7CF01B2F2945005CA835 /* Security.framework in Frameworks */,
 				0C74C1641378727C00BFF44C /* CoreLocation.framework in Frameworks */,
+				69BC7CF41B2F2945005CA835 /* Fabric.framework in Frameworks */,
 				0CCCB2711369A3E3001DF383 /* MapKit.framework in Frameworks */,
 				3201088596B4756681693705 /* libThree20UICommon.a in Frameworks */,
+				69BC7CF51B2F2945005CA835 /* Crashlytics.framework in Frameworks */,
+				69BC7CF31B2F2945005CA835 /* libz.dylib in Frameworks */,
 				320D7DCCE32703ACAB9A45E5 /* libThree20.a in Frameworks */,
+				69BC7CF11B2F2945005CA835 /* SystemConfiguration.framework in Frameworks */,
 				320A737074758E53BA54BE95 /* libThree20UINavigator.a in Frameworks */,
 				320A2827FEC940B25BC42C65 /* libThree20Core.a in Frameworks */,
 				320F2C48872C2E2C4DF86205 /* libThree20UI.a in Frameworks */,
@@ -1142,6 +1159,7 @@
 				320CC833B8AF0ACFD35E6225 /* libThree20Style.a in Frameworks */,
 				320AF8492C47A4D819F7C451 /* QuartzCore.framework in Frameworks */,
 				0CCCB13A13690DA0001DF383 /* UIKit.framework in Frameworks */,
+				69BC7CF21B2F2945005CA835 /* libc++.dylib in Frameworks */,
 				0CCCB13C13690DA0001DF383 /* Foundation.framework in Frameworks */,
 				0CCCB13E13690DA0001DF383 /* CoreGraphics.framework in Frameworks */,
 			);
@@ -1423,6 +1441,12 @@
 		0CCCB13813690DA0001DF383 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				69BC7CEA1B2F2945005CA835 /* Security.framework */,
+				69BC7CEB1B2F2945005CA835 /* SystemConfiguration.framework */,
+				69BC7CEC1B2F2945005CA835 /* libc++.dylib */,
+				69BC7CED1B2F2945005CA835 /* libz.dylib */,
+				69BC7CEE1B2F2945005CA835 /* Fabric.framework */,
+				69BC7CEF1B2F2945005CA835 /* Crashlytics.framework */,
 				0CD303B51385B63100C0C8C0 /* SBJSON */,
 				0C8D30AA137B89A1006B3415 /* FBConnect */,
 				3201088596B4756681693700 /* Three20UICommon.xcodeproj */,
@@ -2085,6 +2109,7 @@
 				0CCCB13113690DA0001DF383 /* Sources */,
 				0CCCB13213690DA0001DF383 /* Frameworks */,
 				0CCCB13313690DA0001DF383 /* Resources */,
+				69BC7CE91B2F28CB005CA835 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -2109,6 +2134,11 @@
 			isa = PBXProject;
 			attributes = {
 				ORGANIZATIONNAME = LavaHound;
+				TargetAttributes = {
+					0CCCB13413690DA0001DF383 = {
+						DevelopmentTeam = SC43CBQBJ8;
+					};
+				};
 			};
 			buildConfigurationList = 0CCCB12F13690DA0001DF383 /* Build configuration list for PBXProject "Lavahound" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -2543,6 +2573,22 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		69BC7CE91B2F28CB005CA835 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "./Fabric.framework/run 3218363b98f999d2f7c7e938083de06d52d1e1d6 63103be9be6af7f35815e785e70ad4cc11c8e3ffa9c28153e012945a116e57f0";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		0CCCB13113690DA0001DF383 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -2762,9 +2808,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
 				CODE_SIGN_ENTITLEMENTS = "";
-				CODE_SIGN_IDENTITY = "";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Lavahound/Lavahound-Prefix.pch";
@@ -2774,13 +2824,14 @@
 					"\"$(BUILT_PRODUCTS_DIR)/../three20\"",
 				);
 				INFOPLIST_FILE = "Lavahound/Lavahound-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 4.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
 					"\"$(SRCROOT)/../../../../../../Library/Developer/Xcode/DerivedData/Lavahound-eawybzujdhvlfqclxcfqtubcmjjf/Build/Products/Debug-iphonesimulator\"",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
 				VALIDATE_PRODUCT = YES;
 				VALID_ARCHS = "armv6 armv7";
 				WRAPPER_EXTENSION = app;
@@ -2844,6 +2895,10 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -2854,15 +2909,15 @@
 					"\"$(BUILT_PRODUCTS_DIR)/../three20\"",
 				);
 				INFOPLIST_FILE = "Lavahound/Lavahound-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 4.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
 					"\"$(SRCROOT)/../../../../../../Library/Developer/Xcode/DerivedData/Lavahound-eawybzujdhvlfqclxcfqtubcmjjf/Build/Products/Debug-iphonesimulator\"",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE = "ED80CAD5-C8D1-4443-A802-A0DCE65E06B2";
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "ED80CAD5-C8D1-4443-A802-A0DCE65E06B2";
+				PROVISIONING_PROFILE = "";
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
 				VALID_ARCHS = "armv6 armv7";
 				WRAPPER_EXTENSION = app;
 			};
@@ -2876,9 +2931,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
 				CODE_SIGN_ENTITLEMENTS = "";
-				CODE_SIGN_IDENTITY = "iPhone Distribution: Wallforce, LLC";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution: Wallforce, LLC";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Lavahound/Lavahound-Prefix.pch";
@@ -2888,15 +2947,15 @@
 					"\"$(BUILT_PRODUCTS_DIR)/../three20\"",
 				);
 				INFOPLIST_FILE = "Lavahound/Lavahound-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 4.3;
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
 					"\"$(SRCROOT)/../../../../../../Library/Developer/Xcode/DerivedData/Lavahound-eawybzujdhvlfqclxcfqtubcmjjf/Build/Products/Debug-iphonesimulator\"",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE = "3E0BB1C9-7FA9-48AF-A669-C344D217F69D";
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "3E0BB1C9-7FA9-48AF-A669-C344D217F69D";
+				PROVISIONING_PROFILE = "";
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
 				VALIDATE_PRODUCT = YES;
 				VALID_ARCHS = "armv6 armv7";
 				WRAPPER_EXTENSION = app;

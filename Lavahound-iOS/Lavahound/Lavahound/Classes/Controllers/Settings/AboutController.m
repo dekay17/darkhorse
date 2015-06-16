@@ -133,7 +133,7 @@
 }
 
 - (void)didTouchUpInAboutCallButton {
-    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"tel://18883305893"]];
+    [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"tel://14842220017"]];
 }
 
 - (void)didTouchUpInTermsAndConditionsButton {

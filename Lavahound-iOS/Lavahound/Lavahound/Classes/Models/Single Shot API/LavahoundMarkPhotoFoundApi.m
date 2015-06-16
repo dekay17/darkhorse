@@ -67,7 +67,7 @@
                                 [NSString stringWithFormat:@"%f", location.horizontalAccuracy], @"accuracy",
                                 nil];
     
-    [_lavahoundApi performRequestWithRelativeUrl:[NSString stringWithFormat:@"/photos/found/%@", photoId] httpMethod:@"POST" parameters:parameters];
+    [_lavahoundApi performRequestWithRelativeUrl:[NSString stringWithFormat:@"/photos/found/%@", photoId] httpMethod:@"GET" parameters:parameters];
   
 //    [_lavahoundApi performRequestWithRelativeUrl:@"/photos/found" httpMethod:@"POST" parameters:parameters];
 }
