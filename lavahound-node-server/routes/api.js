@@ -1,3 +1,4 @@
+var async = require('async');
 var express = require('express');
 var router = express.Router();           // get an instance of the express Router
 
@@ -37,7 +38,7 @@ router.use(function(req, res, next) {
             if (result.rows.length != 1)
                 return res.status(403).json({"error_message": "Please login to use the app"});    
             else{
-                console.log("ACCOUNT_ID: ",result.rows[0].account_id)
+                console.log("ACCOUNT_ID:",result.rows[0].account_id)
                 req.account_id = result.rows[0].account_id;
             }
             next();
@@ -177,39 +178,52 @@ router.get('/hunts', function(req, res) {
 
     // Get a Postgres client from the connection pool
     pg.connect(connectionString, function(err, client, done) {
-        var results = {};
-        results.hunts = [];
-        results.place = {};
+        var jsonResults = {};
+        jsonResults.hunts = [];
+        jsonResults.place = {};
 
-        var placeQuery = client.query("select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude " +
-                "from place p where p.place_id = " + req.query.place_id);
-        placeQuery.on('row', function(row) {
-            row.image_url = cloudfront_base + row.image_file_name;
-            results.place = row;
-        });
 
-        // SQL Query > Select Data
-        var huntQuery = client.query("select h.*, count(hp.photo_id) as total_count, count(pf.photo_id) as found_count  " +
-                "from hunt h, hunt_photo hp left outer join photo_found pf on pf.photo_id = hp.photo_id and pf.account_id = $1 where h.place_id = $2 and h.hunt_id = hp.hunt_id " +
-                "group by h.hunt_id", [req.account_id, req.query.place_id]);
-        // console.log(query);
-        // Stream results back one row at a time
-        huntQuery.on('row', function(row) {
-            row.image_url = cloudfront_base + row.image_file_name;
-            results.hunts.push(row);
-        });
-
-        // After all data is returned, close connection and return results
-        huntQuery.on('end', function() {
-            client.end();
-            return res.json(results);            
-        });
-
-        // Handle Errors
-        if(err) {
-          console.log(err);
+        var placeQuery = function(callback) {
+            client.query("select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude " +
+                    "from place p where p.place_id = " + req.query.place_id, function(err, result) {
+                done();
+                if (err) 
+                    return callback(err);
+                console.log("completed placeQuery", result);
+                jsonResults.place = result.rows[0];
+                callback(null, result[0]);
+            });
         }
 
+
+        // SQL Query > Select Data
+        var huntQuery = function(callback) {
+            client.query("select h.*, count(hp.photo_id) as total_count, count(pf.photo_id) as found_count  " +
+                "from hunt h, hunt_photo hp left outer join photo_found pf on pf.photo_id = hp.photo_id and pf.account_id = $1 where h.place_id = $2 and h.hunt_id = hp.hunt_id " +
+                "group by h.hunt_id", [req.account_id, req.query.place_id], function(err, result) {
+                    done();
+                    if (err) 
+                        return callback(err);
+                    console.log("completed huntQuery", result);
+                    result.rows.forEach(function(row) {
+                        row.image_url = cloudfront_base + row.image_file_name;
+                        jsonResults.hunts.push(row);
+                    });
+                    callback(null, result);
+            });
+        }
+
+          async.parallel([
+            placeQuery,
+            huntQuery
+          ], function(err, results) {
+            if (err) 
+                return res.status(400).json({"error_message": "error loading data"});    
+            // jsonResults.place = results[0];
+            client.end();
+            return res.json(jsonResults);       
+
+        });
     });
 });
 

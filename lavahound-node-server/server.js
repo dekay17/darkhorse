@@ -6,6 +6,7 @@ var express    = require('express');        // call express
 
 var exphbs  = require('express-handlebars');
 var path = require('path');
+var async = require('async');
 
 var app        = express();                 // define our app using express
 var bodyParser = require('body-parser');
