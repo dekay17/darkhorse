@@ -1,0 +1,601 @@
+@import "reset.css";
+
+/* A font by Jos Buivenga (exljbris) -> www.exljbris.com */
+
+@font-face {
+    font-family: 'DiavloLight';
+    src: url('../fonts/diavlo_light_ii_37-webfont.eot');
+    src: url('../fonts/diavlo_light_ii_37-webfont.eot?iefix') format('eot'),
+         url('../fonts/diavlo_light_ii_37-webfont.woff') format('woff'),
+         url('../fonts/diavlo_light_ii_37-webfont.ttf') format('truetype'),
+         url('../fonts/diavlo_light_ii_37-webfont.svg#webfont0It6qZSh') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'DiavloMedium';
+    src: url('../fonts/diavlo_medium_ii_37-webfont.eot');
+    src: url('../fonts/diavlo_medium_ii_37-webfont.eot?iefix') format('eot'),
+         url('../fonts/diavlo_medium_ii_37-webfont.woff') format('woff'),
+         url('../fonts/diavlo_medium_ii_37-webfont.ttf') format('truetype'),
+         url('../fonts/diavlo_medium_ii_37-webfont.svg#webfont0It6qZSh') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+h2{
+font-family: 'DiavloMedium', 'Helvetica Neue', Helvetica, sans-serif;
+color:#9f2600;
+font-size:36px;
+display:inline;
+font-weight: 100;
+}
+
+h3{
+font-family: 'DiavloMedium', 'Helvetica Neue', Helvetica, sans-serif;
+color:#9f2600;
+font-size:24px;
+display:block;
+font-weight: 100;
+}
+
+h4{
+font-family: 'DiavloLight', 'Helvetica Neue', Helvetica, sans-serif;
+color:#fff;
+font-size:18px;
+font-weight: 400;
+}
+
+h5{
+font-family: 'DiavloMedium', 'Helvetica Neue', Helvetica, sans-serif;
+color:#9f2600;
+font-size:18px;
+display:inline;
+font-weight: 100;
+}
+
+h6{
+background-color: #666666;
+color:#fff;
+padding:6px;
+font-weight: 300;
+margin:0px -51px 15px 0px;
+}
+
+p{
+font-size: 14px;
+line-height: 1.5;
+font-weight: 200;
+margin-bottom:15px;
+}
+
+
+/*  End Typography  */
+
+body {
+  font-size: 14px; /* Causes base font size to be ~10px */
+  font-family: 'Helvetica Neue', sans-serif;
+  background-image:url(../images/bg.jpg);
+  color:#888888;
+}
+
+.wrapper{
+width:960px;
+margin:auto;
+}
+
+.left{float:left;}
+.right{float:right;}
+.clear{clear:both;}
+
+/*  End Global Values  */
+
+header{
+width:938px;
+height:52px;
+margin:10px 0;
+padding:12px;
+background-image: url('../images/navbg.png');
+}
+
+h1{
+display:inline;
+}
+
+nav{
+float:right;
+margin:20px 20px 0px 0px;
+}
+
+nav ul li{
+float:left;
+margin-left:15px;
+}
+
+nav ul li a{
+color:#fff;
+text-decoration: none;
+font-size: 16px;
+font-weight:500;
+font-family: 'DiavloLight', 'Helvetica Neue', sans-serif;
+}
+
+/*  End Header  */
+
+.body{
+background-color:#FFFFFF;
+border:1px solid #ddd;
+margin-bottom:15px;
+-moz-box-shadow:1px 1px 2px #b7b7b7;
+-webkit-box-shadow:1px 1px 2px #b7b7b7;
+box-shadow:1px 1px 2px #b7b7b7;
+padding:50px;
+}
+
+footer{
+margin-bottom: 15px;
+}
+
+footer p{
+font-size: 12px;
+}
+
+/*  End Main Template Values  */
+
+img#baby{
+margin:-35px;
+}
+
+table#bottom{
+	margin-bottom:10px;
+	-moz-box-shadow:1px 1px 2px #b7b7b7;
+	-webkit-box-shadow:1px 1px 2px #b7b7b7;
+	box-shadow:1px 1px 2px #b7b7b7;
+	padding:50px;
+	background-color:#FFFFFF;
+	border:1px solid #ddd;
+	}
+	
+	#tabletop{
+	height:30px;
+	}
+	
+	#tablebottom p{
+	line-height:1.75;
+	padding:15px;
+	}
+	
+	td.left{
+	width:400px;
+	padding-left:30px;
+	text-align:right;
+	}
+	
+	td.middle{
+	width:88px;
+	padding-left:12px;
+	}
+	
+	td.middle img{
+	margin-top:15px;
+	margin-bottom:-25px;
+	}
+	
+	td.right{
+	width:400px;
+	padding-right:30px;
+	text-align:left;
+	}
+
+/*  End Homepage Values  */
+
+#aboutbox{
+	background-color:#FFFFFF;
+	border:1px solid #dddddd;
+	position:relative;
+	height:400px;
+	}
+
+	#aboutbox ul{
+	margin:-15px 0px 0px 150px;
+	list-style-type: none;
+	}
+	
+	#aboutbox ul li{
+	float:left;
+	width:170px;
+	height:25px;
+	padding-top:8px;
+	background-color:#FFFFFF;
+	border:1px solid #ad2900;
+	text-align:center;
+	-moz-box-shadow:1px 1px 2px #b7b7b7;
+    -webkit-box-shadow:1px 1px 2px #b7b7b7;
+    box-shadow:1px 1px 2px #b7b7b7;
+	margin-right:20px;
+	}
+	
+	#aboutbox ul li.activeButton{
+	background-color:#ad2900;
+	}
+	
+	#aboutbox ul li.activeButton a{
+	color:#fff;
+	}
+	
+	#aboutbox ul li a{
+	text-decoration:none;
+	font-family: 'DiavloMedium', Arial, Helvetica, sans-serif;
+	color:#9f2600;
+	font-size:16px;
+	font-weight:100;
+	}
+	
+	.about{
+	position:absolute;
+	top:50px;
+	left:50px;
+	width:740px;
+	}
+	
+	.about img{
+	float:right;
+	margin-right:20px;
+	}
+	
+	.aboutdescription{
+	float:left;
+	width:325px;
+	padding-right:15px;
+	}
+	
+	.about a{
+	color:#9f2600;
+	}
+
+
+/*  End About Page Values  */
+
+#huntsbox{
+	height:420px;
+	background-color:#FFFFFF;
+	border:1px solid #dddddd;
+	position:relative;
+	}
+	
+	#huntsbox ul{
+	margin:-15px 0px 0px 200px;
+	list-style-type: none;
+	}
+	
+	#huntsbox ul li{
+	float:left;
+	width:100px;
+	height:23px;
+	padding-top:7px;
+	background-color:#FFFFFF;
+	border:1px solid #ad2900;
+	text-align:center;
+	-moz-box-shadow:1px 1px 2px #b7b7b7;
+    -webkit-box-shadow:1px 1px 2px #b7b7b7;
+    box-shadow:1px 1px 2px #b7b7b7;
+	margin-right:20px;
+	}
+	
+	#huntsbox ul li.activeButton{
+	background-color:#ad2900;
+	}
+	
+	#huntsbox ul li.activeButton a{
+	color:#fff;
+	}
+	
+	#huntsbox ul li a{
+	text-decoration:none;
+	font-family: 'DiavloMedium', Arial, Helvetica, sans-serif;
+	color:#9f2600;
+	font-size:16px;
+	font-weight:100;
+	}
+	
+	.hunts{
+	position:absolute;
+	top:50px;
+	left:0px;
+	}
+	
+	.hunts img{
+	float:left;
+	margin-right:20px;
+	}
+	
+	.huntdescription{
+	float:right;
+	width:250px;
+	padding-right:15px;
+	}
+
+/*  End Hunts Page Values  */
+
+.howto{
+height:384px;
+width:958px;
+border-top:1px solid #ddd;
+margin-left:-50px;
+position:relative;
+}
+
+.howto span{
+display:block;
+background-image: url('../images/stepimgbg.png');
+width:303px;
+height:384px;
+position:absolute;
+}
+
+.howto img{
+margin:17px 0px 0px 25px;
+}
+
+.howto p{
+width:340px;
+position:relative;
+top:145px;
+}
+
+#step1{
+margin-top:25px;
+background-image: url('../images/step1bg.png');
+background-position: right;
+background-repeat: no-repeat;
+}
+
+#step2{
+background-image: url('../images/step2bg.png');
+background-position: left;
+background-repeat: no-repeat;
+}
+
+#step3{
+background-image: url('../images/step3bg.png');
+background-position: right;
+background-repeat: no-repeat;
+}
+
+#step4{
+border-bottom:1px solid #ddd; 
+background-image: url('../images/step4bg.png');
+background-position: left;
+background-repeat: no-repeat;
+}
+
+#step1, #step3{
+background-color:#f7f7f7;
+}
+
+#step1 span, #step3 span{
+left:50px;
+}
+
+#step1 h4, #step3 h4{
+position:relative;
+top:105px;
+left:365px;
+}
+
+#step1 p, #step3 p{
+left:370px;
+}
+
+#step2, #step4{
+background-color:#fff;
+}
+
+#step2 span, #step4 span{
+left:607px;
+}
+
+#step2 h4, #step4 h4{
+position:relative;
+top:105px;
+left:425px;
+}
+
+#step2 p, #step4 p{
+text-align:right;
+left:250px;
+}
+
+
+/*  End How to Play Values  */
+	
+	#runslider{
+		width: 860px;
+		height:240px;
+		margin-bottom: 25px;
+	}
+	
+	#runslider img{
+	display: block;
+	}
+	
+	#gallery, #thumbs{
+		float: left;
+	}
+	
+	#gallery{
+		width: 620px;
+		height: 240px;
+		overflow: hidden;
+	}
+	
+	#gallery img{
+		position: absolute;
+	}
+	
+	#thumbs{
+		width: 240px;
+		height: 240px;
+		overflow: hidden;
+	}
+	
+	#next{
+		display: block;
+		width: 47px;
+		height: 43px;
+		background: url('../images/arrow.png');
+		position: relative;
+		top: 197px;
+		left: 813px;
+	}
+	
+	#next:hover{
+		background: url('../images/arrowmo.png');
+	}
+	
+	.clear{
+		clear: both;
+	}
+	
+	/* End Runslider */
+
+table#running{
+width:860px;
+height:200px;
+}
+
+table#running tr td.spacer{
+width:20px;
+}
+
+table#running tr td:nth-child(1){
+background-image: url('../images/storecalloutbg.png');
+background-repeat: no-repeat;
+height:271px;
+width:160px;
+padding:10px;
+}
+
+table#running tr td:nth-child(1) a{
+text-decoration: none;
+color:#666;
+font-size: 18px;
+font-family: 'DiavloMedium', 'Helvetica Neue', Helvetica, sans-serif;
+display:block;
+padding:10px;
+border:1px solid #d2d2d2;
+background-color: #fff;
+margin-right:-10px;
+}
+
+table#running tr td:nth-child(1) p{
+line-height:1.25;
+text-shadow: 1px 1px #fff;
+margin:20px 0;
+color:#666;
+font-size: 14px;
+}
+
+table#running tr td:nth-child(3){
+width:460px;
+}
+
+table#running tr td:nth-child(5){
+width:180px;
+}
+
+table#running tr td:nth-child(5) span{
+background-image: url('../images/upcomingeventstab.png');
+width:180px;
+height:31px;
+display:block;
+text-shadow: 1px 1px #000;
+text-align: center;
+padding-top: 10px;
+}
+
+.event{
+margin:15px 0;
+}
+
+.event ul{
+list-style-type: none;
+}
+
+.event ul li{
+margin-top: 7px;
+}
+
+table#running tr td:nth-child(5) a{
+display:block;
+background-image: url('../images/fullcalbtn.png');
+width:180px;
+height:27px;
+font-size: 16px;
+font-family: 'DiavloMedium', 'Helvetica Neue', Helvetica, sans-serif;
+text-decoration: none;
+color:#666;
+text-shadow: 1px 1px #fff;
+text-align: center;
+padding-top: 12px;
+}
+
+/*  End Running Values  */
+
+#archives{
+width:180px;
+float:left;
+}
+
+#archives h3,#press h3{
+margin-bottom:10px;
+}
+
+#archives ul{
+list-style-type:square;
+list-style-position: inside;
+}
+
+#archives ul li{
+margin: 4px 0px;
+}
+
+#archives ul li a{
+text-decoration: none;
+color: #888888;
+}
+
+#press{
+width:678px;
+float:right;
+}
+
+/*  End Press Values  */
+
+label, textarea{
+text-align: left;
+font-size: 14px;
+font-weight: 200;
+display:block;
+font-family: 'Helvetica Neue', sans-serif; 
+width:400px;
+margin:10px 0px;
+}
+
+input{
+border:1px solid #ddd;
+margin-bottom:4px;
+width:400px;
+height:25px;
+}
+
+textarea{
+border:1px solid #ddd;
+}
+
+input.button{
+width:60px;
+}
+
+/*  End Contact Values  */
