@@ -11,6 +11,7 @@ var sha1       = require('sha1');
 
 var publicUrls = ["/sign-in", "/sign-up"]
 
+
 // middleware to use for all requests
 router.use(function(req, res, next) {
     // do logging
@@ -85,7 +86,7 @@ router.get('/sign-in', function(req, res) {
         // Handle Errors
         if(err) {
             console.log(err);
-            return res.json({"error_message": err});    
+            return res.status(400).json({"error_message": err});    
         }
     });
 
@@ -102,7 +103,6 @@ router.get('/sign-up', function(req, res) {
     var token = sha1(email);
     console.log(email, hash);
 
-
     pg.connect(connectionString, function(err, client, done) {
 
         // SQL Query > Select Data
@@ -112,16 +112,13 @@ router.get('/sign-up', function(req, res) {
         // After all data is returned, close connection and return results
         query.on('end', function() {
             client.end();
-            // return res.json(results);
+            return res.json({ api_token: token, total_points: 0 });   
         });
 
-        // Handle Errors
-        if(err) {
-            console.log(err);
-            return res.status(400).json({"error_message": err});    
-        }else{
-            return res.json({ api_token: token, total_points: 0 });   
-        }
+        query.on('error', function (err) {
+            console.log('Database error!', err);
+            return res.status(400).json({"error_message": err.detail});    
+        });
     });
 });
 
