@@ -155,7 +155,7 @@ static NSString * const REQUEST_URL_USER = @"/scoreboard/user";
     
     if (m_CurrType == ScoreboardTypeHunt)
     {
-        FullRequestUrl = [NSString stringWithFormat:@"%@%@?api_token=%@&huntid=%i&udid=%@&version_number=%@",
+        FullRequestUrl = [NSString stringWithFormat:@"%@%@?api_token=%@&hunt_id=%i&udid=%@&version_number=%@",
                           [Constants sharedInstance].apiEndpointAbsoluteUrlPrefix,
                           REQUEST_URL_HUNT,
                           [LocalStorage sharedInstance].apiToken,
