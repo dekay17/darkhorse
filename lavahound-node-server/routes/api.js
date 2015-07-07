@@ -81,7 +81,7 @@ router.get('/sign-in', function(req, res) {
         var token = null;
         // SQL Query > Select Data
         var query = client.query("select email, password, remember_me_token from account where email = $1 and password = $2", [email, hash]);
-        console.log(query);
+        // console.log(query);
         // After all data is returned, close connection and return results
         query.on('row', function(row) {
             token = row.remember_me_token;
@@ -184,7 +184,7 @@ router.get('/places/nearby', function(req, res) {
             "from place p, hunt h where p.place_id = h.place_id group by p.place_id, p.name,p.description, p.image_file_name,p.latitude,p.longitude, miles  " +
             "order by round((point(p.longitude, p.latitude) <@> point(" + req.query.lng + "," + req.query.lat + "))::numeric, 3)");
 
-        console.log(query);
+        // console.log(query);
         // Stream results back one row at a time
         query.on('row', function(row) {
             row.image_url = cloudfront_base + "sm_" + row.image_file_name;
