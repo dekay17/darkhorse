@@ -113,8 +113,6 @@ router.get('/sign-in', function(req, res) {
             });
         }
     });
-
-    // res.json({ api_token: 'TEST123', total_points: userPoints });   
 });
 
 
@@ -329,7 +327,7 @@ router.get('/hunts/:hunt_id/photos', function(req, res) {
         // Stream results back one row at a time
         query.on('row', function(row) {
             row.image_url = cloudfront_base + "sm_" + row.image_file_name;
-            console.log(row.title, "=>", row.image_url);
+            // console.log(row.title, "=>", row.image_url);
             row.proximity_description = row.miles + " miles";
 
             results.photos.push(row);
@@ -357,10 +355,11 @@ router.get('/scoreboard/hunt', function(req, res) {
     pg.connect(connectionString, function(err, client, done) {
 
         // SQL Query > Select Data
-        var query = client.query("SELECT id, username,totalpoints::integer, place::integer, 0 as huntrank FROM (SELECT a.account_id as id, a.name as username,points totalpoints,rank() OVER (ORDER BY points desc) as place " +
+        var query = client.query("SELECT id, username,totalpoints::integer, place::integer, 0 as huntrank FROM " +
+            "(SELECT a.account_id as id, a.name as username,points totalpoints,rank() OVER (ORDER BY points desc, a.name asc, a.account_id asc) as place " +
             " FROM hunt_points hp, account a where hp.account_id = a.account_id and hunt_id = $1) AS ranking", [req.query.hunt_id]);
         // Stream results back one row at a time
-        console.log(query);
+        // console.log(query);
 
         query.on('row', function(row) {
             results.huntscoreboard.push(row);
@@ -381,6 +380,8 @@ router.get('/scoreboard/hunt', function(req, res) {
 });
 
 router.get('/scoreboard/user', function(req, res) {
+
+
     res.json({
         userscoreboard: [{
             huntname: "Discover Philly",
@@ -526,53 +527,6 @@ router.get('/photos/found/:photo_id', function(req, res) {
             });
         });
     });
-
-
-
-
-
-    // ------------------
-    // http://baudehlo.com/2014/04/28/node-js-multiple-query-transactions/
-    // pg.connect(connectionString, function(err, client, done) {
-    //     if (err) {
-    //         console.log("step1:", err);
-    //         return res.status(400).json({
-    //             "error_message": err
-    //         });
-    //     } else {
-    //         client.query("insert into photo_found(photo_id, account_id) values($1, $2)", [req.params.photo_id, req.account_id], function(err, results) {
-    //             if (err) {
-    //                 console.log("step2:", err);
-    //                 // done();
-    //                 return res.status(400).json({
-    //                     "error_message": err
-    //                 });
-    //             } else {
-    //                 // client.query("select sum(points) from photo p, photo_found pf where p.photo_id = pf.photo_id and pf.account_id = $1", req.account_id, function (err, results) {
-    //                 client.query('select points, found_msg from photo p where p.photo_id = $1', [req.params.photo_id], function(err, results) {
-    //                     if (err) {
-    //                         // console.log(query, err);
-    //                         // done();
-    //                         return res.status(400).json({
-    //                             "error_message": err
-    //                         });
-    //                     } else {
-    //                         console.log("results", results);
-    //                         points = results.rows[0].points;
-    //                         found_msg = results.rows[0].found_msg;
-    //                         console.log("Points: ", points, found_msg);
-    //                         res.json({
-    //                             total_points: points.toString(),
-    //                             message: found_msg,
-    //                             points: points.toString()
-    //                         });
-    //                     }
-    //                     done();
-    //                 });
-    //             }
-    //         });
-    //     }
-    // });
 });
 
 
