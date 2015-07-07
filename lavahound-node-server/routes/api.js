@@ -78,14 +78,17 @@ router.get('/sign-in', function(req, res) {
 
 
     pg.connect(connectionString, function(err, client, done) {
-        var token = null;
+        var token, points = null;
         // SQL Query > Select Data
-        var query = client.query("select email, password, remember_me_token from account where email = $1 and password = $2", [email, hash]);
+        console.log(email, hash);
+        var query = client.query("select email, remember_me_token, COALESCE(sum(points), 0) as total_points " +
+            "from account ac left outer join hunt_points hp on ac.account_id = hp.account_id " +
+            "where email = $1 and password = $2 group by email, remember_me_token", [email, hash]);
         // console.log(query);
         // After all data is returned, close connection and return results
-        query.on('row', function(row) {
+        query.on('row', function(row) {            
             token = row.remember_me_token;
-            console.log(row.remember_me_token, token);
+            points = row.total_points;
         });
 
         query.on('end', function() {
@@ -93,7 +96,7 @@ router.get('/sign-in', function(req, res) {
             if (token != null)
                 return res.json({
                     api_token: token,
-                    total_points: 0
+                    total_points: points
                 });
             else
                 return res.status(400).json({
@@ -375,27 +378,6 @@ router.get('/scoreboard/hunt', function(req, res) {
         }
 
     });
-
-
-    // res.json({
-    //     huntscoreboard: [{
-    //         huntname: "Campus Treasures",
-    //         huntrank: "huntrank",
-    //         id: 1,
-    //         place: 1,
-    //         username: "sean",
-    //         "totalpoints": 100,
-    //         "isUser": 1
-    //     }, {
-    //         huntname: "Where is Ben?",
-    //         huntrank: "huntrank",
-    //         id: 2,
-    //         place: 1,
-    //         username: "dan",
-    //         "totalpoints": 20,
-    //         "isUser": 1
-    //     }]
-    // });
 });
 
 router.get('/scoreboard/user', function(req, res) {
@@ -490,84 +472,107 @@ router.get('/', function(req, res) {
 });
 
 router.get('/photos/found/:photo_id', function(req, res) {
-    var points = 0;
-    var found_msg = "";
-
-
-    // var Client = require('pg').Client;
-
-    // var client = new Client(connectionString);
-    // client.connect();
-
-    // var rollback = function(client, err) {
-    //   //terminating a client connection will
-    //   //automatically rollback any uncommitted transactions
-    //   //so while it's not technically mandatory to call
-    //   //ROLLBACK it is cleaner and more correct
-    //   client.query('ROLLBACK', function() {
-    //     client.end();
-    //   });
-    //   return res.status(400).json({"error_message": err});
-    // };
-
-    // client.query('BEGIN', function(err, result) {
-    //   if(err) return rollback(client, err);
-    //   client.query('insert into photo_found(photo_id, account_id) values($1, $2)', [req.params.photo_id, req.account_id], function (err, results) {
-    //     if(err) return rollback(client, err);
-    //     client.query('select points, found_msg from photo p where p.photo_id = $1', req.params.photo_id, function (err, results) {
-    //       if(err) return rollback(client, err);
-    //       //disconnect after successful commit
-    //       client.query('COMMIT', client.end.bind(client));
-    //         points = results[0].points;
-    //         found_msg = results[0].found_msg;
-    //         console.log("Points: ", points, found_msg);
-    //         res.json({ total_points: points.toString(), message: found_msg, points: points.toString() });        
-    //     });
-    //   });
-    // });
-
     console.log("Found: ", req.params.photo_id, req.account_id);
-    // http://baudehlo.com/2014/04/28/node-js-multiple-query-transactions/
+
+    // ---------------------
     pg.connect(connectionString, function(err, client, done) {
-        if (err) {
-            console.log("step1:", err);
-            return res.status(400).json({
-                "error_message": err
-            });
-        } else {
-            client.query("insert into photo_found(photo_id, account_id) values($1, $2)", [req.params.photo_id, req.account_id], function(err, results) {
-                if (err) {
-                    console.log("step2:", err);
-                    // done();
-                    return res.status(400).json({
-                        "error_message": err
-                    });
-                } else {
-                    // client.query("select sum(points) from photo p, photo_found pf where p.photo_id = pf.photo_id and pf.account_id = $1", req.account_id, function (err, results) {
-                    client.query('select points, found_msg from photo p where p.photo_id = $1', [req.params.photo_id], function(err, results) {
-                        if (err) {
-                            // console.log(query, err);
-                            // done();
-                            return res.status(400).json({
-                                "error_message": err
-                            });
-                        } else {
-                            console.log("results", results);
-                            points = results.rows[0].points;
-                            found_msg = results.rows[0].found_msg;
-                            console.log("Points: ", points, found_msg);
-                            res.json({
-                                total_points: points.toString(),
-                                message: found_msg,
-                                points: points.toString()
-                            });
-                        }
-                        done();
-                    });
-                }
+
+        var foundQuery = function(callback) {
+            client.query("insert into photo_found(photo_id, account_id) values($1, $2)", [req.params.photo_id, req.account_id], function(err, result) {
+                done();
+                if (err)
+                    return callback(err);
+                callback(null, null);                                        
             });
         }
+
+
+        // SQL Query > Select Data
+        var pointsQuery = function(callback) {
+            client.query('select points, found_msg from photo p where p.photo_id = $1', [req.params.photo_id], function(err, result) {
+                done();
+                if (err)
+                    return callback(err);
+                callback(null, result.rows[0]);
+            });
+        }
+
+        var totalPointsQuery = function(callback) {
+            client.query('select update_hunt_points($1) as total_points', [req.account_id], function(err, result) {
+                done();
+                if (err)
+                    return callback(err);
+                callback(null, result.rows[0]);
+            });
+        }
+
+        async.series([
+            foundQuery,
+            pointsQuery,
+            totalPointsQuery
+        ], function(err, results) {
+            if (err)
+                return res.status(400).json({
+                    "error":err,
+                    "error_message": "error loading data"
+                });
+            client.end();
+            
+            return res.json({
+                results: results,   
+                total_points: results[2].total_points.toString(),
+                message: results[1].found_msg,
+                points: results[1].points.toString()
+            });
+        });
     });
+
+
+
+
+
+    // ------------------
+    // http://baudehlo.com/2014/04/28/node-js-multiple-query-transactions/
+    // pg.connect(connectionString, function(err, client, done) {
+    //     if (err) {
+    //         console.log("step1:", err);
+    //         return res.status(400).json({
+    //             "error_message": err
+    //         });
+    //     } else {
+    //         client.query("insert into photo_found(photo_id, account_id) values($1, $2)", [req.params.photo_id, req.account_id], function(err, results) {
+    //             if (err) {
+    //                 console.log("step2:", err);
+    //                 // done();
+    //                 return res.status(400).json({
+    //                     "error_message": err
+    //                 });
+    //             } else {
+    //                 // client.query("select sum(points) from photo p, photo_found pf where p.photo_id = pf.photo_id and pf.account_id = $1", req.account_id, function (err, results) {
+    //                 client.query('select points, found_msg from photo p where p.photo_id = $1', [req.params.photo_id], function(err, results) {
+    //                     if (err) {
+    //                         // console.log(query, err);
+    //                         // done();
+    //                         return res.status(400).json({
+    //                             "error_message": err
+    //                         });
+    //                     } else {
+    //                         console.log("results", results);
+    //                         points = results.rows[0].points;
+    //                         found_msg = results.rows[0].found_msg;
+    //                         console.log("Points: ", points, found_msg);
+    //                         res.json({
+    //                             total_points: points.toString(),
+    //                             message: found_msg,
+    //                             points: points.toString()
+    //                         });
+    //                     }
+    //                     done();
+    //                 });
+    //             }
+    //         });
+    //     }
+    // });
 });
 
 
@@ -649,42 +654,7 @@ router.get('/users/points', function(req, res) {
                 }
             });
         });
-
-// -------------
-        // SQL Query > Select Data
-
-        // console.log(query);
-        // var query = client.query("select p.* from photo p");
-        // Stream results back one row at a time
-        // query.on('row', function(row) {
-        //     totalpoints = row.totalpoints;
-        //     rank = row.huntrank;
-        // });
-
-        // // After all data is returned, close connection and return results
-        // query.on('end', function() {
-        //     client.end();
-        //     // return res.json(results);
-        //     res.json({
-        //         points: {
-        //             total: totalpoints,
-        //             finder: totalpoints,
-        //             hider: 0,
-        //             royalties: 0,
-        //             rank: "3",
-        //             rank_percentile: "5%",
-        //             rank_description: "Rockstar"
-        //         }
-        //     });
-
-        // });
-
-        // // Handle Errors
-        // if (err) {
-        //     console.log("Error:", err);
-        // }
     });
-
 });
 
 module.exports = router;
