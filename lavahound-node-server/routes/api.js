@@ -323,7 +323,7 @@ router.get('/hunts/:hunt_id/photos', function(req, res) {
         var query = client.query("select p.*, round((point(p.longitude, p.latitude) <@> point($1,$2))::numeric, 2) as miles, count(pf1.photo_id) as found from photo p " +
             "left outer join photo_found pf1 on pf1.photo_id = p.photo_id and pf1.account_id = $3, hunt_photo hp where hp.hunt_id = $4 and hp.photo_id = p.photo_id " +
             "group by p.photo_id order by round((point(p.longitude, p.latitude) <@> point($5,$6))::numeric, 3)", [lng, lat, req.account_id, req.params.hunt_id, lng, lat]);
-        console.log(query);
+        // console.log(query);
         // Stream results back one row at a time
         query.on('row', function(row) {
             row.image_url = cloudfront_base + "sm_" + row.image_file_name;
@@ -342,6 +342,7 @@ router.get('/hunts/:hunt_id/photos', function(req, res) {
         // Handle Errors
         if (err) {
             console.log(err);
+            return res.status(400).json({ "error_message": "Error loading hunt"});
         }
 
     });
@@ -374,6 +375,7 @@ router.get('/scoreboard/hunt', function(req, res) {
         // Handle Errors
         if (err) {
             console.log(err);
+            return res.status(400).json({ "error_message": "Error loading scoreboard"});
         }
 
     });
@@ -381,34 +383,17 @@ router.get('/scoreboard/hunt', function(req, res) {
 
 router.get('/scoreboard/user', function(req, res) {
 
+    return res.status(400).json({ "error_message": "call not implemented"});
+        // userscoreboard: [{
+        //     huntname: "Discover Philly",
+        //     huntrank: 2,
+        //     id: 2,
+        //     place: 1,
+        //     username: "dan",
+        //     "totalpoints": 70,
+        //     "isUser": 1
+        // }, {
 
-    res.json({
-        userscoreboard: [{
-            huntname: "Discover Philly",
-            huntrank: 2,
-            id: 2,
-            place: 1,
-            username: "dan",
-            "totalpoints": 70,
-            "isUser": 1
-        }, {
-            huntname: "Campus Treasures",
-            huntrank: 5,
-            id: 1,
-            place: 1,
-            username: "sean",
-            "totalpoints": 30,
-            "isUser": 1
-        }, {
-            huntname: "Where is Ben?",
-            huntrank: 8,
-            id: 2,
-            place: 1,
-            username: "dan",
-            "totalpoints": 20,
-            "isUser": 1
-        }]
-    });
 });
 
 router.get('/photos/show/:photo_id', function(req, res) {
@@ -462,13 +447,6 @@ router.get('/photos/show/:photo_id', function(req, res) {
         if (err) {
             console.log("Error:", err);
         }
-    });
-});
-
-// test route to make sure everything is working (accessed at GET http://localhost:8080/api)
-router.get('/', function(req, res) {
-    res.json({
-        message: 'hooray! welcome to our api!'
     });
 });
 
@@ -551,9 +529,9 @@ router.get('/users/points', function(req, res) {
     pg.connect(connectionString, function(err, client, done) {
 
         var userQuery = function(callback) {
-            client.query("SELECT username,totalpoints, account_id, huntrank FROM ( " +
+            client.query("SELECT username,totalpoints, account_id, user_rank FROM ( " +
             "SELECT a.name as username,a.account_id, sum(points) totalpoints,rank() " +
-            "OVER (ORDER BY sum(points) desc) as huntrank " +
+            "OVER (ORDER BY sum(points) desc) as user_rank " +
             "FROM hunt_points hp, account a where hp.account_id = a.account_id group by a.name, a.account_id " +
             ") AS ranking where account_id = $1", [req.account_id], 
                 function(err, result) {
@@ -593,22 +571,38 @@ router.get('/users/points', function(req, res) {
                 });
             client.end();
             
-            var rank_percentile = (results[0].huntrank / results[1].total)*100;
+            var percent = (results[0].user_rank / results[1].total);
+            var rank_percentile = Math.round(percent*100);
 
             return res.json({
                 results: results,
+                total_points: results[0].totalpoints,
                 points: {
                     total: results[0].totalpoints,
                     finder: results[0].totalpoints,
                     hider: 0,
                     royalties: 0,
-                    rank: results[0].rank,
-                    rank_percentile: rank_percentile.toFixed(2) + "%",
-                    rank_description: "Rockstar"
+                    rank: results[0].user_rank,
+                    rank_percentile: rank_percentile + "%",
+                    rank_description: get_rank_label(results[0].user_rank, results[1].total)
                 }
             });
         });
     });
 });
+
+function get_rank_label(rank, total){
+    if (rank == 1)
+        return "Top Dog" 
+    
+    var percent = rank/total;
+    if (percent < 0.02)
+        return "Lavahound" 
+      
+    var rank_description_array = ["St. Bernard","Greyhound","Dalmation","Collie","Golden Retreiver","Black Lab","Bassett Hound","Beagle","Poodle","Chihuahua"];
+
+    var index = Math.floor(percent * (rank_description_array.length-1));
+    return "Top #" + Math.round(percent*100) + "%" + rank_description_array[index];
+}
 
 module.exports = router;
