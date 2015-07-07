@@ -16,8 +16,6 @@ var nodemailer = require("nodemailer");
 var sesTransport = require('nodemailer-ses-transport');
 
 var transporter = nodemailer.createTransport(sesTransport({
-    accessKeyId: 'AKIAJCJVGOUGHUN4JVWQ',
-    secretAccessKey: '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',
     rateLimit: 5
 }));
 
@@ -37,7 +35,7 @@ router.use(function(req, res, next) {
             }
             client.query('SELECT account_id from account where remember_me_token = $1', [req.query.api_token], function(err, result) {
                 //call `done()` to release the client back to the pool 
-                // console.log(err, result);
+                done();
 
                 if (err) {
                     // console.log(query, err);
@@ -45,11 +43,9 @@ router.use(function(req, res, next) {
                         "error_message": err
                     });
                 }
-                done();
+
                 if (result.rows.length != 1)
-                    return res.status(403).json({
-                        "error_message": "Please login to use the app"
-                    });
+                    return res.status(403).json({ "error_message": "Please login to use the app"});
                 else {
                     console.log("ACCOUNT_ID:", result.rows[0].account_id)
                     req.account_id = result.rows[0].account_id;
@@ -61,12 +57,7 @@ router.use(function(req, res, next) {
         //public url
         next();
     }
-    // console.log("QUERY:",req.query);
-    // console.log("BODY:",req.body);
 
-    // add check for logged in
-
-    // make sure we go to the next routes and don't stop here
 });
 
 // lavahound test routes
@@ -134,13 +125,13 @@ router.get('/sign-up', function(req, res) {
         // After all data is returned, close connection and return results
         query.on('end', function() {
             client.end();
-            var msgHtml = "Home:" + req.body.homeTeam + ":" + req.body.homeScore + "<br/>" + "Away:" + req.body.awayTeam + ":" + req.body.awayScore;
-            var msgText = "Home:" + req.body.homeTeam + ":" + req.body.homeScore + "\n" + "Away:" + req.body.awayTeam + ":" + req.body.awayScore;
+            var msgHtml = "Welcome to Lavahound";
+            var msgText = "Welcome to Lavahound";
 
             var mailOptions = {
-                from: 'dan+sllsepa@kelleyland.com', // sender address
-                to: ['dan@kelleyland.com'], // list of receivers
-                subject: 'SLLSEPA Score', // Subject line
+                from: 'dan+lavahound@kelleyland.com', // sender address
+                to: [email], // list of receivers
+                subject: 'Welcome to Lavahound', // Subject line
                 text: msgText, // plaintext body
                 html: msgHtml // html body
             };
@@ -291,24 +282,6 @@ router.get('/hunts', function(req, res) {
 
 
 router.get('/hunts/:hunt_id/photos', function(req, res) {
-
-    // photo.photoId = [photoJson objectForKey:@"photo_id"];
-    // photo.accountId = [photoJson objectForKey:@"account_id"];  
-    // photo.points = [photoJson objectForKey:@"points"];  
-    // photo.timesFound = [photoJson objectForKey:@"times_found"];      
-    // photo.title = [photoJson objectForKey:@"title"];    
-    // photo.description = [photoJson objectForKey:@"description"];        
-    // photo.imageUrl = [photoJson objectForKey:@"image_url"];    
-    // photo.latitude = [photoJson objectForKey:@"latitude"];    
-    // photo.longitude = [photoJson objectForKey:@"longitude"];    
-    // photo.proximityDescription = [photoJson objectForKey:@"proximity_description"];
-    // photo.proximityColor = [photoJson objectForKey:@"proximity_color"];
-    // photo.submittedBy = [photoJson objectForKey:@"submitted_by"];
-    // photo.submittedByImageUrl = [photoJson objectForKey:@"submitted_by_image_url"];
-    // photo.submittedOn = [photoJson objectForKey:@"submitted_on"];
-    // photo.shotInformation = [[photoJson objectForKey:@"shot_information"] isKindOfClass:[NSString class]] ? [photoJson objectForKey:@"shot_information"] : nil;    
-    // photo.found = [[photoJson objectForKey:@"found"] boolValue];
-    // photo.owner = [[photoJson objectForKey:@"owner"] boolValue];   
 
     var results = {};
     results.photos = [];

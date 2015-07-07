@@ -100,3 +100,19 @@ insert into photo(photo_id, account_id, image_file_name, title, description,foun
 insert into hunt_photo select photo_id, 1001 from photo where title = 'City Tavern';
 
 
+-- Seaport Musuem
+insert into place(place_id, image_file_name, name, description, latitude, longitude)
+values(nextval('place_id_seq'),'SeaportMuseum.png', 'Seaport Museum', 'Explore Philadelphia''s only maritime museum! See nautical art, interactive exhibits, the Workshop on the Water, and our two historic ships!', 39.945949, -75.140374);
+
+insert into hunt(hunt_id, place_id, image_file_name, name, description, latitude, longitude, points)
+values(nextval('hunt_id_seq'),currval('place_id_seq'),'USSOlympia.png', 'Our Boats', 'See our two historic ships - the cruiser Olympia, the oldest steel warship still afloat in the world and the WWII-era submarine Becuna', 39.945949, -75.140374, 20);
+
+
+insert into photo(photo_id, account_id, image_file_name, title, description,found_msg, points, latitude, longitude) values(nextval('photo_id_seq'),1,'SeaportMuseum.png','The Museum','Explore Philadelphia''s only maritime museum! See nautical art, interactive exhibits, the Workshop on the Water, and our two historic ships!','CHALLENGE: Take a pictue of your best sailor salute and post it to us @phillyseaport', 10, 39.945949, -75.140374);
+insert into hunt_photo select photo_id, currval('hunt_id_seq') from photo where title = 'The Museum';
+
+insert into photo(photo_id, account_id, image_file_name, title, description,found_msg, points, latitude, longitude) values(nextval('photo_id_seq'),1,'USSOlympia.png','USS Olympia','Launched in 1892, The Olympia is the oldest steel warship afloat in the world.','Olympia is a rare treasure in the U.S. naval fleet, as no sister ships were ever built.', 10, 39.944562, -75.141181);	
+insert into hunt_photo select photo_id, currval('hunt_id_seq') from photo where title = 'USS Olympia';
+
+insert into photo(photo_id, account_id, image_file_name, title, description,found_msg, points, latitude, longitude) values(nextval('photo_id_seq'),1,'Becuna.png','Becuna Sub','Becuna is a BALAO-class submarine built in New London, CT. During World War II, "Becky" prowled the Pacific Ocean for Japanese ships, and is credited with sinking 3.5 Japanese merchant ships.','DID YOU KNOW: You can get special behind the scene tours the first Saturday of every month, Noon - 4 pm, April through December.', 10, 39.944562, -75.141181);	
+insert into hunt_photo select photo_id, currval('hunt_id_seq') from photo where title = 'Becuna Sub';
