@@ -42,4 +42,4 @@ app.use('/api', api);
 // START THE SERVER
 // =============================================================================
 app.listen(port);
-console.log('Magic happens on port ' + port);
+console.log('Lavahound started on port ' + port);
