@@ -186,7 +186,7 @@
     _royaltiesPointsLabel.text = [NSString stringWithFormat:@"%@", points.royalties];
     _royaltiesLabel.text = [NSString stringWithFormat:@"Bonus Points"];
 
-    _rankPercentileLabel.text = [NSString stringWithFormat:@"Overall Rank: %@", points.rankPercentile];
+    _rankPercentileLabel.text = [NSString stringWithFormat:@"Overall Rank: %@", points.rank]; //points.rankPercentile
     _rankDescriptionLabel.text = points.rankDescription;
 }
 

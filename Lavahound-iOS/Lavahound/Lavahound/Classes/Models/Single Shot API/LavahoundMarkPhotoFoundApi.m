@@ -61,12 +61,12 @@
     
     NSDictionary *parameters = [NSDictionary dictionaryWithObjectsAndKeys:
                                 [LocalStorage sharedInstance].apiToken, @"api_token",
-                                photoId, @"photo_id",
                                 [NSString stringWithFormat:@"%f", location.coordinate.latitude], @"lat",
                                 [NSString stringWithFormat:@"%f", location.coordinate.longitude], @"lng",
                                 [NSString stringWithFormat:@"%f", location.horizontalAccuracy], @"accuracy",
                                 nil];
-    
+                            //    photoId, @"photo_id",
+
     [_lavahoundApi performRequestWithRelativeUrl:[NSString stringWithFormat:@"/photos/found/%@", photoId] httpMethod:@"GET" parameters:parameters];
   
 //    [_lavahoundApi performRequestWithRelativeUrl:@"/photos/found" httpMethod:@"POST" parameters:parameters];
