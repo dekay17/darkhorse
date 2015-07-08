@@ -240,7 +240,7 @@ router.get('/hunts', function(req, res) {
                     if (err)
                         return callback(err);
                     console.log("completed placeQuery");
-                    result.rows[0].image_url = cloudfront_base + "sm_" + result.rows[0].image_file_name;
+                    result.rows[0].image_url = cloudfront_base + result.rows[0].image_file_name;
                     jsonResults.place = result.rows[0];
                     callback(null, result[0]);
                 });
