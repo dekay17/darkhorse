@@ -257,7 +257,7 @@ router.get('/hunts', function(req, res) {
                         return callback(err);
                     console.log("completed huntQuery");
                     result.rows.forEach(function(row) {
-                        row.image_url = cloudfront_base + row.image_file_name;
+                        row.image_url = cloudfront_base + "sm_" + row.image_file_name;
                         jsonResults.hunts.push(row);
                     });
                     callback(null, result);
