@@ -55,7 +55,7 @@
     _placeNameLabel.contentMode = UIViewContentModeCenter;
     [self.view addSubview:_placeNameLabel];
     
-    self.tableView.frame = CGRectMake(self.tableView.left, self.tableView.top + 27, self.tableView.width, self.tableView.height - 27);    
+    self.tableView.frame = CGRectMake(self.tableView.left, self.tableView.top + 27, self.tableView.width, self.tableView.height - 50);
 }
 
 - (void)viewDidUnload {
