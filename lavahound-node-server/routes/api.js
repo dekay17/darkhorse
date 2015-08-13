@@ -304,6 +304,10 @@ router.get('/hunts/:hunt_id/photos', function(req, res) {
             // console.log(row.title, "=>", row.image_url);
             row.proximity_description = row.miles + " miles";
 
+            if (1 == req.account_id){
+                row.found = false;
+            }
+
             results.photos.push(row);
         });
 
@@ -408,6 +412,9 @@ router.get('/photos/show/:photo_id', function(req, res) {
             row.image_url = cloudfront_base + row.image_file_name;
             row.proximity_description = row.miles + " miles";
             row.shot_information = row.description;
+            if (1 == req.account_id){
+                row.found = false;
+            }
             results = row;
         });
 
@@ -459,11 +466,12 @@ router.get('/photos/found/:photo_id', function(req, res) {
             });
         }
 
-        async.series([
-            foundQuery,
-            pointsQuery,
-            totalPointsQuery
-        ], function(err, results) {
+	var queries = [ foundQuery, pointsQuery, totalPointsQuery ];
+	if (1 == req.account_id){
+		queries = [ pointsQuery, totalPointsQuery ];
+	}
+
+        async.series(queries, function(err, results) {
             if (err)
                 return res.status(400).json({
                     "error":err,
