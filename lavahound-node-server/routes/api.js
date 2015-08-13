@@ -3,6 +3,8 @@ var express = require('express');
 var router = express.Router(); // get an instance of the express Router
 
 var pg = require('pg');
+pg.defaults.poolSize = 20;
+
 var connectionString = process.env.DATABASE_URL || 'postgres://lavahound:h0und@localhost:5432/lavahound';
 
 var cloudfront_base = "https://s3.amazonaws.com/lavahound-hunts/";
@@ -274,7 +276,7 @@ router.get('/hunts', function(req, res) {
                     "error_message": "error loading data"
                 });
             // jsonResults.place = results[0];
-            client.end();
+            //client.end();
             return res.json(jsonResults);
 
         });
@@ -478,12 +480,12 @@ router.get('/photos/found/:photo_id', function(req, res) {
                     "error_message": "error loading data"
                 });
             client.end();
-            
+            var resultsLength = results.length;
             return res.json({
                 results: results,   
-                total_points: results[2].total_points.toString(),
-                message: results[1].found_msg,
-                points: results[1].points.toString()
+                total_points: results[resultsLength-1].total_points.toString(),
+                message: results[resultsLength-2].found_msg,
+                points: results[resultsLength-2].points.toString()
             });
         });
     });

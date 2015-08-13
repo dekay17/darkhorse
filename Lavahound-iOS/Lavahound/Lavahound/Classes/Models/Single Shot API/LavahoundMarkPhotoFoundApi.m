@@ -53,7 +53,7 @@
 
 - (void)markFoundWithPhotoId:(NSNumber *)photoId {    
     CLLocation *location = [LocationTracker sharedInstance].location;   
-    
+
     if(!location) {
         TTAlert(@"Sorry, you must enable location services to mark a photo as found.");
         return;
