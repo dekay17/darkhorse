@@ -167,20 +167,28 @@ router.get('/places/nearby', function(req, res) {
     var results = [];
 
     // lng=-122.0304785247098&lat=37.33240841337464
-    if (!req.query.lat || !req.query.lng)
-        return res.json({
-            "error_message": "Please turn on location services to play"
-        });
+    // if (!req.query.lat  !req.query.lng || !req.query.ne_lng || !req.query.ne_lat)
+    //     return res.json({
+    //         "error_message": "Please turn on location services to play"
+    //     });
     // Get a Postgres client from the connection pool
     pg.connect(connectionString, function(err, client, done) {
 
         // SQL Query > Select Data
-        var query = client.query("select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude, count(hunt_id) hunt_count, " +
-            "round((point(p.longitude, p.latitude) <@> point(" + req.query.lng + "," + req.query.lat + "))::numeric, 2) as miles " +
-            "from place p, hunt h where p.place_id = h.place_id group by p.place_id, p.name,p.description, p.image_file_name,p.latitude,p.longitude, miles  " +
-            "order by round((point(p.longitude, p.latitude) <@> point(" + req.query.lng + "," + req.query.lat + "))::numeric, 3)");
+        var query = null
+        if (req.query.lat){
+            var query = client.query("select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude, count(hunt_id) hunt_count, " +
+                "round((point(p.longitude, p.latitude) <@> point(" + req.query.lng + "," + req.query.lat + "))::numeric, 2) as miles " +
+                "from place p, hunt h where p.place_id = h.place_id group by p.place_id, p.name,p.description, p.image_file_name,p.latitude,p.longitude, miles  " +
+                "order by round((point(p.longitude, p.latitude) <@> point(" + req.query.lng + "," + req.query.lat + "))::numeric, 3)");
+        }else{
+            var query = client.query("select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude, count(hunt_id) hunt_count from place p, hunt h " +
+                "where p.place_id = h.place_id and p.longitude <= " + req.query.ne_lng + " and p.longitude >= " + req.query.sw_lng + " and p.latitude <= " + req.query.ne_lat + " and p.latitude >= " + req.query.sw_lat +
+                " group by p.place_id, p.name,p.description, p.image_file_name,p.latitude,p.longitude")
+        }
+        
 
-        // console.log(query);
+        console.log(query);
         // Stream results back one row at a time
         query.on('row', function(row) {
             row.image_url = cloudfront_base + "sm_" + row.image_file_name;
