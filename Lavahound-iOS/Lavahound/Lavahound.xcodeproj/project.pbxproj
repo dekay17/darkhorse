@@ -368,6 +368,11 @@
 		69E20280139DB9250097BABB /* buttonPhotoMapItActive@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 69E2027C139DB9250097BABB /* buttonPhotoMapItActive@2x.png */; };
 		69E20283139DBB060097BABB /* buttonPhotoMapItInactive.png in Resources */ = {isa = PBXBuildFile; fileRef = 69E20281139DBB060097BABB /* buttonPhotoMapItInactive.png */; };
 		69E20284139DBB060097BABB /* buttonPhotoMapItInactive@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 69E20282139DBB060097BABB /* buttonPhotoMapItInactive@2x.png */; };
+		69FC276C1B8804160046BE3D /* spotlight5Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FC27681B8804160046BE3D /* spotlight5Icon.png */; };
+		69FC276D1B8804160046BE3D /* spotlight5Icon@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FC27691B8804160046BE3D /* spotlight5Icon@2x.png */; };
+		69FC276E1B8804160046BE3D /* spotlightIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FC276A1B8804160046BE3D /* spotlightIcon.png */; };
+		69FC276F1B8804160046BE3D /* spotlightIcon@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FC276B1B8804160046BE3D /* spotlightIcon@2x.png */; };
+		69FC27731B8805760046BE3D /* icon-120.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FC27721B8805760046BE3D /* icon-120.png */; };
 		D502145E14FD286D003581DA /* AdminController.m in Sources */ = {isa = PBXBuildFile; fileRef = D502145D14FD286D003581DA /* AdminController.m */; };
 		D502146014FD31CA003581DA /* Admin.xib in Resources */ = {isa = PBXBuildFile; fileRef = D502145F14FD31CA003581DA /* Admin.xib */; };
 		D55599ED151A468D0063F4D8 /* SignUp.xib in Resources */ = {isa = PBXBuildFile; fileRef = D55599EC151A468D0063F4D8 /* SignUp.xib */; };
@@ -1069,6 +1074,11 @@
 		69E2027C139DB9250097BABB /* buttonPhotoMapItActive@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "buttonPhotoMapItActive@2x.png"; sourceTree = "<group>"; };
 		69E20281139DBB060097BABB /* buttonPhotoMapItInactive.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = buttonPhotoMapItInactive.png; sourceTree = "<group>"; };
 		69E20282139DBB060097BABB /* buttonPhotoMapItInactive@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "buttonPhotoMapItInactive@2x.png"; sourceTree = "<group>"; };
+		69FC27681B8804160046BE3D /* spotlight5Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = spotlight5Icon.png; sourceTree = "<group>"; };
+		69FC27691B8804160046BE3D /* spotlight5Icon@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "spotlight5Icon@2x.png"; sourceTree = "<group>"; };
+		69FC276A1B8804160046BE3D /* spotlightIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = spotlightIcon.png; sourceTree = "<group>"; };
+		69FC276B1B8804160046BE3D /* spotlightIcon@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "spotlightIcon@2x.png"; sourceTree = "<group>"; };
+		69FC27721B8805760046BE3D /* icon-120.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-120.png"; sourceTree = "<group>"; };
 		D502145C14FD286D003581DA /* AdminController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AdminController.h; sourceTree = "<group>"; };
 		D502145D14FD286D003581DA /* AdminController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AdminController.m; sourceTree = "<group>"; };
 		D502145F14FD31CA003581DA /* Admin.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; name = Admin.xib; path = "Interface Builder/Admin.xib"; sourceTree = "<group>"; };
@@ -1750,6 +1760,11 @@
 		0CECD0A31381D236006CEA82 /* Images */ = {
 			isa = PBXGroup;
 			children = (
+				69FC27721B8805760046BE3D /* icon-120.png */,
+				69FC27681B8804160046BE3D /* spotlight5Icon.png */,
+				69FC27691B8804160046BE3D /* spotlight5Icon@2x.png */,
+				69FC276A1B8804160046BE3D /* spotlightIcon.png */,
+				69FC276B1B8804160046BE3D /* spotlightIcon@2x.png */,
 				699D861C139960FF00519488 /* aboutBG.png */,
 				699D861D139960FF00519488 /* aboutBG@2x.png */,
 				699D862013997C1000519488 /* aboutPageBG.png */,
@@ -2136,7 +2151,7 @@
 				ORGANIZATIONNAME = LavaHound;
 				TargetAttributes = {
 					0CCCB13413690DA0001DF383 = {
-						DevelopmentTeam = SC43CBQBJ8;
+						DevelopmentTeam = 5MKUJNM356;
 					};
 				};
 			};
@@ -2302,6 +2317,7 @@
 				0CD305731386AA1A00C0C8C0 /* tabBarAbout.png in Resources */,
 				0CD305741386AA1A00C0C8C0 /* tabBarAbout@2x.png in Resources */,
 				0CD305751386AA1A00C0C8C0 /* tabBarFind.png in Resources */,
+				69FC276C1B8804160046BE3D /* spotlight5Icon.png in Resources */,
 				0CD305761386AA1A00C0C8C0 /* tabBarFind@2x.png in Resources */,
 				0CD305771386AA1A00C0C8C0 /* tabBarProfile.png in Resources */,
 				0CD305781386AA1A00C0C8C0 /* tabBarProfile@2x.png in Resources */,
@@ -2310,6 +2326,7 @@
 				0CD3059B1386ACAA00C0C8C0 /* findMeButton.png in Resources */,
 				0CD3059C1386ACAA00C0C8C0 /* findMeButton@2x.png in Resources */,
 				0CD305A11386ACAA00C0C8C0 /* lavahoundLogoBackground.png in Resources */,
+				69FC276D1B8804160046BE3D /* spotlight5Icon@2x.png in Resources */,
 				0CD305A21386ACAA00C0C8C0 /* lavahoundLogoBackground@2x.png in Resources */,
 				0CD305A31386ACAA00C0C8C0 /* mapPin.png in Resources */,
 				0CD305A41386ACAA00C0C8C0 /* mapPin@2x.png in Resources */,
@@ -2362,6 +2379,7 @@
 				69E20273139DB0F90097BABB /* buttonBack.png in Resources */,
 				69E20274139DB0F90097BABB /* buttonBack@2x.png in Resources */,
 				69E20277139DB1370097BABB /* buttonSignInWithFacebook.png in Resources */,
+				69FC27731B8805760046BE3D /* icon-120.png in Resources */,
 				69E20278139DB1370097BABB /* buttonSignInWithFacebook@2x.png in Resources */,
 				69E2027D139DB9250097BABB /* buttonPhotoInfoInactive.png in Resources */,
 				69E2027E139DB9250097BABB /* buttonPhotoInfoInactive@2x.png in Resources */,
@@ -2452,6 +2470,7 @@
 				0CE1244913CF8AA300041914 /* scoreBox.png in Resources */,
 				0CE1244A13CF8AA300041914 /* progressBarBG.png in Resources */,
 				0CE1244B13CF8AA300041914 /* profilePageBG.png in Resources */,
+				69FC276E1B8804160046BE3D /* spotlightIcon.png in Resources */,
 				0CE1244C13CF8AA300041914 /* mapPinHunts.png in Resources */,
 				0CE1244D13CF8AA300041914 /* huntHomePhotoBG.png in Resources */,
 				0CE1244E13CF8AA300041914 /* huntHomeHuntsBG.png in Resources */,
@@ -2558,6 +2577,7 @@
 				D5B66EA114F6DBF400F667C6 /* MyStuffHome.xib in Resources */,
 				D55EF64714FC260A00499691 /* MyProfile.xib in Resources */,
 				D502146014FD31CA003581DA /* Admin.xib in Resources */,
+				69FC276F1B8804160046BE3D /* spotlightIcon@2x.png in Resources */,
 				D5EE400814FE6F62007B1FF6 /* mapPinFound.png in Resources */,
 				D5EE400914FE6F62007B1FF6 /* mapPinFound@2x.png in Resources */,
 				D5C5E0311517C8100075F308 /* buttonUpdateEmailDisplay.png in Resources */,
@@ -2779,11 +2799,11 @@
 		0C31AB131385A67F0039BFF7 /* Ad Hoc */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				ARCHS = "$(ARCHS_STANDARD)";
 				CODE_SIGN_IDENTITY = "iPhone Distribution: Wallforce, LLC";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution: Wallforce, LLC";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_VERSION = "";
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
@@ -2794,8 +2814,8 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 6.1;
 				OTHER_CFLAGS = "-DNS_BLOCK_ASSERTIONS=1";
 				OTHER_LDFLAGS = "-ObjC";
-				PROVISIONING_PROFILE = "FFF028DE-C8E1-4D6F-B38B-E892B6F7ED85";
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "FFF028DE-C8E1-4D6F-B38B-E892B6F7ED85";
+				PROVISIONING_PROFILE = "";
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
 				SDKROOT = iphoneos;
 			};
 			name = "Ad Hoc";
@@ -2804,7 +2824,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
 				CODE_SIGN_ENTITLEMENTS = "";
@@ -2841,14 +2861,14 @@
 		0CCCB14E13690DA0001DF383 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				ARCHS = "$(ARCHS_STANDARD)";
 				CODE_SIGN_IDENTITY = "iPhone Developer: Nathan Russak (WXMTZLFVNL)";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer: Nathan Russak (WXMTZLFVNL)";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = DEBUG;
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_VERSION = "";
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
@@ -2858,8 +2878,8 @@
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 6.1;
 				OTHER_LDFLAGS = "-ObjC";
-				PROVISIONING_PROFILE = "6660E2BD-169E-460E-8AF4-0695A1DE9AAE";
-				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "6660E2BD-169E-460E-8AF4-0695A1DE9AAE";
+				PROVISIONING_PROFILE = "";
+				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
 				SDKROOT = iphoneos;
 			};
 			name = Debug;
@@ -2867,10 +2887,10 @@
 		0CCCB14F13690DA0001DF383 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				ARCHS = "$(ARCHS_STANDARD)";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				GCC_C_LANGUAGE_STANDARD = gnu99;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_VERSION = "";
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
@@ -2889,7 +2909,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
@@ -2927,7 +2947,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
 				CODE_SIGN_ENTITLEMENTS = "";
@@ -2947,7 +2967,7 @@
 					"\"$(BUILT_PRODUCTS_DIR)/../three20\"",
 				);
 				INFOPLIST_FILE = "Lavahound/Lavahound-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 5.1.1;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
