@@ -14,7 +14,7 @@ var sha1 = require('sha1');
 var geolib = require('geolib');
 
 
-var publicUrls = ["/sign-in", "/sign-up"]
+var publicUrls = ["/sign-in", "/sign-up", "/terms-and-conditions", "/privacy-policy"]
 
 var nodemailer = require("nodemailer");
 var sesTransport = require('nodemailer-ses-transport');
@@ -64,6 +64,16 @@ router.use(function(req, res, next) {
         next();
     }
 
+});
+
+router.get('/terms-and-conditions', function(req, res, next) {
+  // res.render('index', { title: 'Express' });
+  res.render('terms', { layout: false} );
+});
+
+router.get('/privacy-policy', function(req, res, next) {
+  // res.render('index', { title: 'Express' });
+  res.render('privacy' , { layout: false});
 });
 
 // lavahound test routes
