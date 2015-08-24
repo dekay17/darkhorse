@@ -11,6 +11,8 @@ var cloudfront_base = "https://s3.amazonaws.com/lavahound-hunts/";
 
 var fs = require('fs');
 var sha1 = require('sha1');
+var geolib = require('geolib');
+
 
 var publicUrls = ["/sign-in", "/sign-up"]
 
@@ -444,8 +446,9 @@ router.get('/photos/show/:photo_id', function(req, res) {
 });
 
 router.get('/photos/found/:photo_id', function(req, res) {
-    console.log("Found: ", req.params.photo_id, req.account_id);
 
+
+    console.log("Found: ", req.params.photo_id, req.account_id);
     // ---------------------
     pg.connect(connectionString, function(err, client, done) {
 
@@ -458,17 +461,7 @@ router.get('/photos/found/:photo_id', function(req, res) {
             });
         }
 
-
         // SQL Query > Select Data
-        var pointsQuery = function(callback) {
-            client.query('select points, found_msg from photo p where p.photo_id = $1', [req.params.photo_id], function(err, result) {
-                done();
-                if (err)
-                    return callback(err);
-                callback(null, result.rows[0]);
-            });
-        }
-
         var totalPointsQuery = function(callback) {
             client.query('select update_hunt_points($1) as total_points', [req.account_id], function(err, result) {
                 done();
@@ -478,26 +471,73 @@ router.get('/photos/found/:photo_id', function(req, res) {
             });
         }
 
-    	var queries = [ foundQuery, pointsQuery, totalPointsQuery ];
-    	if (adminIds.indexOf(parseInt(req.account_id)) > -1){
-    		queries = [ pointsQuery, totalPointsQuery ];
-    	}
 
-        async.series(queries, function(err, results) {
-            if (err)
-                return res.status(400).json({
-                    "error":err,
-                    "error_message": "error loading data"
-                });
-            client.end();
-            var resultsLength = results.length;
-            return res.json({
-                results: results,   
-                total_points: results[resultsLength-1].total_points.toString(),
-                message: results[resultsLength-2].found_msg,
-                points: results[resultsLength-2].points.toString()
-            });
+        var query = client.query("select points, found_msg, latitude, longitude from photo p where p.photo_id = $1", [req.params.photo_id]);
+        // console.log(query);
+        // Stream results back one row at a time
+        var initial_results = {};
+        query.on('row', function(row) {
+            initial_results = row;
         });
+
+        // After all data is returned, close connection and return results
+        query.on('end', function() {
+            var queries = [ foundQuery, totalPointsQuery ];
+
+            var distanceCheckEnabled = true;
+            if (adminIds.indexOf(parseInt(req.account_id)) > -1){
+                queries = [ totalPointsQuery ];
+                distanceCheckEnabled = false;
+            }
+
+            console.log("cheching : ", initial_results.latitude, initial_results.longitude);
+            console.log("cheching : ", req.query.lat, req.query.lng);
+
+            var meters = geolib.getDistance(
+                {latitude: initial_results.latitude, longitude: initial_results.longitude},
+                {latitude: req.query.lat, longitude: req.query.lng}
+            );
+
+            if (distanceCheckEnabled && (meters < 75)){
+                async.series(queries, function(err, results) {
+                    if (err)
+                        return res.status(400).json({
+                            "error":err,
+                            "error_message": "error loading data"
+                        });
+                    client.end();
+                    var resultsLength = results.length;
+                    return res.json({
+                        distance: meters,
+                        results: results,   
+                        total_points: results[resultsLength-1].total_points.toString(),
+                        message: initial_results.found_msg,
+                        points: initial_results.points.toString()
+                    });
+                });
+            }else{
+                return res.status(400).json({
+                    "error_message": "Almost there .. not",
+                    "distance": meters,
+                });
+            }
+        });
+
+        // Handle Errors
+        if (err) {
+            console.log(err);
+            return res.status(400).json({ "error_message": "Error loading hunt"});
+        }
+
+        // var pointsQuery = function(callback) {
+        //     client.query('select points, found_msg, latitude, longitude from photo p where p.photo_id = $1', [req.params.photo_id], function(err, result) {
+        //         done();
+        //         if (err)
+        //             return callback(err);
+        //         callback(null, result.rows[0]);
+        //     });
+        // }
+
     });
 });
 
@@ -596,7 +636,7 @@ function get_rank_label(rank, total){
     var rank_description_array = ["St. Bernard","Greyhound","Dalmation","Collie","Golden Retreiver","Black Lab","Bassett Hound","Beagle","Poodle","Chihuahua"];
 
     var index = Math.floor(percent * (rank_description_array.length-1));
-    return "Top #" + Math.round(percent*100) + "%" + rank_description_array[index];
+    return "Top #" + Math.round(percent*100) + "% - " + rank_description_array[index];
 }
 
 module.exports = router;
