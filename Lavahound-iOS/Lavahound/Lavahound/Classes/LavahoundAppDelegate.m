@@ -121,6 +121,8 @@
     else    
         [navigator openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://welcome"] applyAnimated:NO]];    
     
+//    [[UINavigationBar appearance] setTintColor:[UIColor whiteColor]];
+    
     CGRect frame = [[UIScreen mainScreen] bounds];
     NSLog(@"Frame %@", NSStringFromCGRect(frame));
     

@@ -21,10 +21,6 @@
         [self addPointsButtonToNavigationBar];        
         self.tabBarItem.image = TTIMAGE(@"bundle://tabBarAbout.png");
         self.tabBarItem.title = @"About";
-        self.navigationItem.backBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Back"
-                                                                                  style:UIBarButtonItemStyleBordered
-                                                                                 target:nil
-                                                                                 action:nil] autorelease];
     }
     
     return self;

@@ -154,7 +154,7 @@
 
   if (!self.popupViewController) {
     UINavigationBar* bar = self.navigationController.navigationBar;
-    bar.tintColor = _navigationBarTintColor;
+    bar.tintColor = [UIColor whiteColor];//_navigationBarTintColor;
     bar.barStyle = _navigationBarStyle;
 
     if (!TTIsPad()) {

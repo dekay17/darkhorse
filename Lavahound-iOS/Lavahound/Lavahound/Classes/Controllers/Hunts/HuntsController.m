@@ -42,7 +42,9 @@
 #pragma mark UIViewController
 
 - (void)viewDidLoad {   
-    [super viewDidLoad];    
+    [super viewDidLoad];
+    // fix nav bar
+    //self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
 
     UIImageView *backgroundImageView = [[[UIImageView alloc] initWithImage:TTIMAGE(@"bundle://huntHomeBG.png")] autorelease];    
     [self.view addSubview:backgroundImageView];    

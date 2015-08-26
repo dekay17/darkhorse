@@ -25,11 +25,11 @@
         
         [self initializeLavahoundNavigationBarWithTitle:@"hunt"];        
         [self addPointsButtonToNavigationBar];        
-        self.navigationItem.backBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Back"
-                                                                                  style:UIBarButtonItemStyleBordered
-                                                                                 target:nil
-                                                                                 action:nil] autorelease];
-        [self.navigationItem.backBarButtonItem setTitleTextAttributes:@{NSForegroundColorAttributeName:[UIColor whiteColor]} forState:UIControlStateNormal];
+//        self.navigationItem.backBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Back"
+//                                                                                  style:UIBarButtonItemStyleBordered
+//                                                                                 target:nil
+//                                                                                 action:nil] autorelease];
+//        [self.navigationItem.backBarButtonItem setTitleTextAttributes:@{NSForegroundColorAttributeName:[UIColor whiteColor]} forState:UIControlStateNormal];
     }
     
     return self;    

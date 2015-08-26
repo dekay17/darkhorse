@@ -41,9 +41,7 @@ static int      const TAB_IDX_MY_STUFF      = 1;
     
     // Added by DK
     [[UINavigationBar appearance] setBackgroundImage:[UIImage imageNamed:@"navigationBarBackground"] forBarMetrics:UIBarMetricsDefault];
-    
-//    [self.navigationController.navigationBar setBackgroundImage:[UIImage imageNamed:@"navigationBarBackground"]  forBarMetrics:UIBarMetricsDefault];
-
+    //self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
     
     [super viewDidLoad];
 

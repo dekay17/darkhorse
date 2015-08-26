@@ -35,12 +35,18 @@ NSString * const kRightButtonControllerKey = @"RightButtonControllerKey";
         // DEK
         [self setStatusBarStyle:UIStatusBarStyleLightContent];
         [self setNeedsStatusBarAppearanceUpdate];
-        self.navigationItem.backBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:@"Back"
-                                                                                  style:UIBarButtonItemStyleBordered
-                                                                                 target:nil
-                                                                                 action:nil] autorelease];
+                
+        //UIBarButtonItemStyleBordered
+        UIBarButtonItem *backButton = [[[UIBarButtonItem alloc] initWithTitle:@"Back"
+                                                                        style:UIBarButtonItemStylePlain
+                                                                       target:nil
+                                                                       action:nil] autorelease];
+        [backButton setTintColor:[UIColor whiteColor]];
+        
+        self.navigationItem.backBarButtonItem = backButton;
         [self.navigationItem.backBarButtonItem setTitleTextAttributes:@{NSForegroundColorAttributeName:[UIColor whiteColor]} forState:UIControlStateNormal];
 
+//        [self.navigationController.navigationBar setTintColor:[UIColor whiteColor]];
     }
     
     return self;

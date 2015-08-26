@@ -212,7 +212,7 @@
                          self.view.width, TTToolbarHeight())];
   _toolbar.autoresizingMask =
   UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleWidth;
-  _toolbar.tintColor = TTSTYLEVAR(toolbarTintColor);
+ // _toolbar.tintColor = TTSTYLEVAR(toolbarTintColor);
   _toolbar.items = [NSArray arrayWithObjects:
                     _backButton,
                     space,
