@@ -24,6 +24,10 @@ var transporter = nodemailer.createTransport(sesTransport({
 }));
 
 
+var LAVAHOUND_ACCOUNT = 1000;
+
+var TWITTER_ACCOUNT = 1001;
+
 var adminIds = [1,1003];
 
 // middleware to use for all requests
@@ -83,7 +87,6 @@ router.get('/sign-in', function(req, res) {
     var email = req.query.email_address;
     var hash = sha1(password);
 
-
     pg.connect(connectionString, function(err, client, done) {
         var token, points = null;
         // SQL Query > Select Data
@@ -122,6 +125,58 @@ router.get('/sign-in', function(req, res) {
     });
 });
 
+
+router.get('/twitter/sign-up', function(req, res) {
+    var displayName = req.query.display_name;
+    var password = req.query.password;
+    var email = req.query.email_address;
+    console.log(displayName);
+    var hash = sha1(password);
+    var token = sha1(email);
+    console.log(email, hash);
+
+    pg.connect(connectionString, function(err, client, done) {
+
+        // SQL Query > Select Data
+        var query = client.query("insert into account(account_id, name, email, password, remember_me_token) " +
+            "values(nextval('account_id_seq'), $1, $2, $3, $4)", [displayName, email, hash, token]);
+
+        // After all data is returned, close connection and return results
+        query.on('end', function() {
+            client.end();
+            var msgHtml = "Welcome to Lavahound";
+            var msgText = "Welcome to Lavahound";
+
+            var mailOptions = {
+                from: 'dan+lavahound@kelleyland.com', // sender address
+                to: [email], // list of receivers
+                subject: 'Welcome to Lavahound', // Subject line
+                text: msgText, // plaintext body
+                html: msgHtml // html body
+            };
+
+            // // console.log(mailOptions);
+            transporter.sendMail(mailOptions, function(error, info) {
+                if (error) {
+                    console.log(error);
+                }
+                console.log('Message sent: ' + info.response);
+            });
+
+            return res.json({
+                api_token: token,
+                total_points: 0
+            });
+        });
+
+        query.on('error', function(err) {
+            console.log('Database error!', err);
+            return res.status(400).json({
+                "error_message": err.detail
+            });
+        });
+    });
+});
 
 router.get('/sign-up', function(req, res) {
     var displayName = req.query.display_name;
@@ -508,7 +563,7 @@ router.get('/photos/found/:photo_id', function(req, res) {
                 {latitude: req.query.lat, longitude: req.query.lng}
             );
 
-            if (distanceCheckEnabled && (meters < 75)){
+            if (!distanceCheckEnabled || (meters < 75)){
                 async.series(queries, function(err, results) {
                     if (err)
                         return res.status(400).json({
