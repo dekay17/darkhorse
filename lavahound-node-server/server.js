@@ -13,10 +13,6 @@ var app        = express();                 // define our app using express
 var bodyParser = require('body-parser');
 var cookieParser = require('cookie-parser');
 
-// Load routes
-var api = require('./routes/api');
-var web = require('./routes/index');
-
 app.engine('handlebars', exphbs({defaultLayout: 'main'}));
 app.set('view engine', 'handlebars');
 
@@ -24,7 +20,7 @@ app.set('view engine', 'handlebars');
 //client.connect();
 // configure app to use bodyParser()
 // this will let us get the data from a POST
-app.use(bodyParser.urlencoded({ extended: true }));
+// app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 app.use(cookieParser());
@@ -32,9 +28,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 var port = process.env.PORT || 3001;        // set our port
 
-// ROUTES FOR OUR API
+// REQUIRE FILES
 // =============================================================================
-
+// Load routes
+var api = require('./routes/api')(app, express);
+var web = require('./routes/index');
 
 // REGISTER OUR ROUTES -------------------------------
 app.use('/', web);

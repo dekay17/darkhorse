@@ -1,6 +1,6 @@
 var async = require('async');
-var express = require('express');
-var router = express.Router(); // get an instance of the express Router
+//var express = require('express');
+//var router = express.Router(); // get an instance of the express Router
 
 var pg = require('pg');
 pg.defaults.poolSize = 20;
@@ -12,9 +12,11 @@ var cloudfront_base = "https://s3.amazonaws.com/lavahound-hunts/";
 var fs = require('fs');
 var sha1 = require('sha1');
 var geolib = require('geolib');
+var bodyParser = require('body-parser');
 
 
-var publicUrls = ["/sign-in", "/sign-up", "/terms-and-conditions", "/privacy-policy"]
+
+var publicUrls = ["/sign-in", "/sign-up","/twitter/sign-up", "/terms-and-conditions", "/privacy-policy"]
 
 var nodemailer = require("nodemailer");
 var sesTransport = require('nodemailer-ses-transport');
@@ -29,15 +31,18 @@ var LAVAHOUND_ACCOUNT = 1000;
 var TWITTER_ACCOUNT = 1001;
 
 var adminIds = [1,1003];
+module.exports = function(app, express) {
+    app.use(bodyParser.json());
 
+     var router = express.Router();
 // middleware to use for all requests
 router.use(function(req, res, next) {
     // do logging
     console.log(req.path);
 
-    console.log("API:", req.query.api_token);
-
     if (publicUrls.indexOf(req.path) < 0) {
+        console.log("Checking Token :", req.query.api_token);
+
         pg.connect(connectionString, function(err, client, done) {
             if (err) {
                 console.log(err);
@@ -65,6 +70,8 @@ router.use(function(req, res, next) {
         });
     } else {
         //public url
+        console.log("Public URL");
+
         next();
     }
 
@@ -126,20 +133,24 @@ router.get('/sign-in', function(req, res) {
 });
 
 
-router.get('/twitter/sign-up', function(req, res) {
-    var displayName = req.query.display_name;
-    var password = req.query.password;
-    var email = req.query.email_address;
+router.post('/twitter/sign-up', function(req, res) {
+    var displayName = req.body.displayName;
     console.log(displayName);
-    var hash = sha1(password);
-    var token = sha1(email);
-    console.log(email, hash);
+    console.log(req.body);
+    // var token = sha1(req.body.authToken);
+
+// REMOVE AFTER TESTING
+            return res.json({
+                api_token: displayName,
+                total_points: 0
+            });
+
 
     pg.connect(connectionString, function(err, client, done) {
 
         // SQL Query > Select Data
-        var query = client.query("insert into account(account_id, name, email, password, remember_me_token) " +
-            "values(nextval('account_id_seq'), $1, $2, $3, $4)", [displayName, email, hash, token]);
+        var query = client.query("insert into account(account_id, name, email, authtoken, authtokensecret, remember_me_token, accounttype) " +
+            "values(nextval('account_id_seq'), $1, $2, $3, $4, $5, $6)", [displayName, req.body.userId, req.body.authToken, req.body.authTokenSecret, token, TWITTER_ACCOUNT]);
 
         // After all data is returned, close connection and return results
         query.on('end', function() {
@@ -703,5 +714,6 @@ function get_rank_label(rank, total){
     var index = Math.floor(percent * (rank_description_array.length-1));
     return "Top #" + Math.round(percent*100) + "% - " + rank_description_array[index];
 }
-
-module.exports = router;
+return router;
+}
+//module.exports = router;
