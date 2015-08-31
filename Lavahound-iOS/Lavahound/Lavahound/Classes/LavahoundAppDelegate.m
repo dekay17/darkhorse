@@ -46,7 +46,7 @@
 #import "MyStuffHomeController.h"
 #import <Fabric/Fabric.h>
 #import <Crashlytics/Crashlytics.h>
-
+#import <TwitterKit/TwitterKit.h>
 
 @implementation LavahoundAppDelegate
 
@@ -56,8 +56,11 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     
     NSLog(@"********** didFinishLaunchingWithOptions **********");
-    [Fabric with:@[CrashlyticsKit]];
+//    [Fabric with:@[CrashlyticsKit]];
 
+    [Fabric with:@[[Crashlytics class], [Twitter class]]];
+
+    
     // FOR TESTING ONLY!  Clear out the cache every launch
     [[TTURLCache sharedCache] removeAll:YES];
     

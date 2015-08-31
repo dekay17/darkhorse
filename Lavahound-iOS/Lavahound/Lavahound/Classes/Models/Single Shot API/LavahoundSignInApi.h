@@ -16,6 +16,9 @@
 
 - (void)signInWithEmailAddress:(NSString *)emailAddress password:(NSString *)password;
 - (void)signInWithFacebookOAuthToken:(NSString *)facebookOAuthToken;
+- (void)signInWithTwitterOAuthToken:(NSString *)twitterOAuthToken;
+
+
 
 @property(nonatomic, assign) id<LavahoundSignInApiDelegate> delegate;
 

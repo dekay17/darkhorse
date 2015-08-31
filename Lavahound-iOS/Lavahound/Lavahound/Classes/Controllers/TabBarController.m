@@ -163,8 +163,6 @@ static int      const TAB_IDX_MY_STUFF      = 1;
 
 -(void)viewWillAppear:(BOOL)animated{
     [super viewWillAppear:animated];
-    // DEK
-//    [self.navigationController.navigationBar setBackgroundImage:[UIImage imageNamed:@"navigationBarBackground"]  forBarMetrics:UIBarMetricsDefault];
 }
 
 - (void) dealloc

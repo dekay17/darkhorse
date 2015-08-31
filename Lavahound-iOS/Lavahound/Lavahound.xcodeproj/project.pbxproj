@@ -336,6 +336,14 @@
 		69BC7CF31B2F2945005CA835 /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 69BC7CED1B2F2945005CA835 /* libz.dylib */; };
 		69BC7CF41B2F2945005CA835 /* Fabric.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69BC7CEE1B2F2945005CA835 /* Fabric.framework */; };
 		69BC7CF51B2F2945005CA835 /* Crashlytics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69BC7CEF1B2F2945005CA835 /* Crashlytics.framework */; };
+		69CD5CFA1B91E81600539A50 /* CoreData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69CD5CF31B91E81600539A50 /* CoreData.framework */; };
+		69CD5CFB1B91E81600539A50 /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69CD5CF41B91E81600539A50 /* CoreText.framework */; };
+		69CD5CFC1B91E81600539A50 /* Social.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69CD5CF51B91E81600539A50 /* Social.framework */; };
+		69CD5CFD1B91E81600539A50 /* Accounts.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69CD5CF61B91E81600539A50 /* Accounts.framework */; };
+		69CD5CFE1B91E81600539A50 /* TwitterKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69CD5CF71B91E81600539A50 /* TwitterKit.framework */; };
+		69CD5CFF1B91E81600539A50 /* TwitterKitResources.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 69CD5CF81B91E81600539A50 /* TwitterKitResources.bundle */; };
+		69CD5D001B91E81600539A50 /* TwitterCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69CD5CF91B91E81600539A50 /* TwitterCore.framework */; };
+		69CD5D0B1B920D0500539A50 /* API.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69CD5D0A1B920D0500539A50 /* API.swift */; };
 		69DC849B138FE3780026946F /* buttonCamera.png in Resources */ = {isa = PBXBuildFile; fileRef = 69DC8499138FE3780026946F /* buttonCamera.png */; };
 		69DC849C138FE3780026946F /* buttonCamera@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 69DC849A138FE3780026946F /* buttonCamera@2x.png */; };
 		69DC84A5138FF8010026946F /* flippedPhotoBG.png in Resources */ = {isa = PBXBuildFile; fileRef = 69DC84A1138FF8010026946F /* flippedPhotoBG.png */; };
@@ -1042,6 +1050,15 @@
 		69BC7CED1B2F2945005CA835 /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = usr/lib/libz.dylib; sourceTree = SDKROOT; };
 		69BC7CEE1B2F2945005CA835 /* Fabric.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Fabric.framework; sourceTree = "<group>"; };
 		69BC7CEF1B2F2945005CA835 /* Crashlytics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Crashlytics.framework; sourceTree = "<group>"; };
+		69CD5CF31B91E81600539A50 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
+		69CD5CF41B91E81600539A50 /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
+		69CD5CF51B91E81600539A50 /* Social.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Social.framework; path = System/Library/Frameworks/Social.framework; sourceTree = SDKROOT; };
+		69CD5CF61B91E81600539A50 /* Accounts.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accounts.framework; path = System/Library/Frameworks/Accounts.framework; sourceTree = SDKROOT; };
+		69CD5CF71B91E81600539A50 /* TwitterKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = TwitterKit.framework; sourceTree = "<group>"; };
+		69CD5CF81B91E81600539A50 /* TwitterKitResources.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; name = TwitterKitResources.bundle; path = TwitterKit.framework/Versions/A/Resources/TwitterKitResources.bundle; sourceTree = "<group>"; };
+		69CD5CF91B91E81600539A50 /* TwitterCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = TwitterCore.framework; sourceTree = "<group>"; };
+		69CD5D091B920D0400539A50 /* Lavahound-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Lavahound-Bridging-Header.h"; sourceTree = "<group>"; };
+		69CD5D0A1B920D0500539A50 /* API.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = API.swift; sourceTree = "<group>"; };
 		69DC8499138FE3780026946F /* buttonCamera.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = buttonCamera.png; sourceTree = "<group>"; };
 		69DC849A138FE3780026946F /* buttonCamera@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "buttonCamera@2x.png"; sourceTree = "<group>"; };
 		69DC84A1138FF8010026946F /* flippedPhotoBG.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = flippedPhotoBG.png; sourceTree = "<group>"; };
@@ -1166,12 +1183,18 @@
 				320A2827FEC940B25BC42C65 /* libThree20Core.a in Frameworks */,
 				320F2C48872C2E2C4DF86205 /* libThree20UI.a in Frameworks */,
 				320A5A189C235877202780D5 /* libThree20Network.a in Frameworks */,
+				69CD5CFD1B91E81600539A50 /* Accounts.framework in Frameworks */,
+				69CD5CFB1B91E81600539A50 /* CoreText.framework in Frameworks */,
+				69CD5CFE1B91E81600539A50 /* TwitterKit.framework in Frameworks */,
 				320CC833B8AF0ACFD35E6225 /* libThree20Style.a in Frameworks */,
 				320AF8492C47A4D819F7C451 /* QuartzCore.framework in Frameworks */,
+				69CD5CFA1B91E81600539A50 /* CoreData.framework in Frameworks */,
 				0CCCB13A13690DA0001DF383 /* UIKit.framework in Frameworks */,
 				69BC7CF21B2F2945005CA835 /* libc++.dylib in Frameworks */,
 				0CCCB13C13690DA0001DF383 /* Foundation.framework in Frameworks */,
 				0CCCB13E13690DA0001DF383 /* CoreGraphics.framework in Frameworks */,
+				69CD5CFC1B91E81600539A50 /* Social.framework in Frameworks */,
+				69CD5D001B91E81600539A50 /* TwitterCore.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1451,6 +1474,13 @@
 		0CCCB13813690DA0001DF383 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				69CD5CF31B91E81600539A50 /* CoreData.framework */,
+				69CD5CF41B91E81600539A50 /* CoreText.framework */,
+				69CD5CF51B91E81600539A50 /* Social.framework */,
+				69CD5CF61B91E81600539A50 /* Accounts.framework */,
+				69CD5CF71B91E81600539A50 /* TwitterKit.framework */,
+				69CD5CF81B91E81600539A50 /* TwitterKitResources.bundle */,
+				69CD5CF91B91E81600539A50 /* TwitterCore.framework */,
 				69BC7CEA1B2F2945005CA835 /* Security.framework */,
 				69BC7CEB1B2F2945005CA835 /* SystemConfiguration.framework */,
 				69BC7CEC1B2F2945005CA835 /* libc++.dylib */,
@@ -1480,6 +1510,7 @@
 		0CCCB13F13690DA0001DF383 /* Lavahound */ = {
 			isa = PBXGroup;
 			children = (
+				69CD5D081B920CE200539A50 /* API */,
 				0CCCB1D113690F4E001DF383 /* Additions */,
 				0CCCB1D213690F4E001DF383 /* Controllers */,
 				0CCCB1D913690FB6001DF383 /* DataSources */,
@@ -2044,6 +2075,16 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		69CD5D081B920CE200539A50 /* API */ = {
+			isa = PBXGroup;
+			children = (
+				69CD5D0A1B920D0500539A50 /* API.swift */,
+				69CD5D091B920D0400539A50 /* Lavahound-Bridging-Header.h */,
+			);
+			name = API;
+			path = Classes/API;
+			sourceTree = "<group>";
+		};
 		D56DB00314EEC5B200E0F3E2 /* BrickSimple Images */ = {
 			isa = PBXGroup;
 			children = (
@@ -2400,6 +2441,7 @@
 				692F4A76139DC83500C964E3 /* settingsTabTop.png in Resources */,
 				692F4A77139DC83500C964E3 /* settingsTabTop@2x.png in Resources */,
 				692F4A7A139DD1BB00C964E3 /* settingsBG.png in Resources */,
+				69CD5CFF1B91E81600539A50 /* TwitterKitResources.bundle in Resources */,
 				692F4A7B139DD1BB00C964E3 /* settingsBG@2x.png in Resources */,
 				0C7B31D3139E654F00477A74 /* buttonPhotoAlreadyFound.png in Resources */,
 				0C7B31D4139E654F00477A74 /* buttonPhotoAlreadyFound@2x.png in Resources */,
@@ -2676,6 +2718,7 @@
 				0C343FEE1380D76E00A1D8AD /* ImagePicker.m in Sources */,
 				0C343FEF1380D76E00A1D8AD /* ModalOverlay.m in Sources */,
 				0C35F9A1138173A200833ED2 /* TTRequestLoader+Lavahound.m in Sources */,
+				69CD5D0B1B920D0500539A50 /* API.swift in Sources */,
 				0CECD0941381A775006CEA82 /* WebViewController.m in Sources */,
 				0CECD0971381AAEA006CEA82 /* TermsAndConditionsController.m in Sources */,
 				0CECD09A1381AB45006CEA82 /* PrivacyPolicyController.m in Sources */,
@@ -2827,6 +2870,7 @@
 				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -2844,7 +2888,8 @@
 					"\"$(BUILT_PRODUCTS_DIR)/../three20\"",
 				);
 				INFOPLIST_FILE = "Lavahound/Lavahound-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
@@ -2852,6 +2897,8 @@
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "Lavahound/Classes/API/Lavahound-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				VALIDATE_PRODUCT = YES;
 				VALID_ARCHS = "armv6 armv7 arm64";
 				WRAPPER_EXTENSION = app;
@@ -2912,6 +2959,7 @@
 				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
@@ -2929,7 +2977,8 @@
 					"\"$(BUILT_PRODUCTS_DIR)/../three20\"",
 				);
 				INFOPLIST_FILE = "Lavahound/Lavahound-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
@@ -2938,6 +2987,8 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "Lavahound/Classes/API/Lavahound-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				VALID_ARCHS = "armv6 armv7 arm64";
 				WRAPPER_EXTENSION = app;
 			};
@@ -2950,6 +3001,7 @@
 				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -2967,7 +3019,8 @@
 					"\"$(BUILT_PRODUCTS_DIR)/../three20\"",
 				);
 				INFOPLIST_FILE = "Lavahound/Lavahound-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 5.1.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
@@ -2976,6 +3029,8 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "Lavahound/Classes/API/Lavahound-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				VALIDATE_PRODUCT = YES;
 				VALID_ARCHS = "armv6 armv7 arm64";
 				WRAPPER_EXTENSION = app;

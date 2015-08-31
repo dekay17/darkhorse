@@ -137,42 +137,17 @@ router.post('/twitter/sign-up', function(req, res) {
     var displayName = req.body.displayName;
     console.log(displayName);
     console.log(req.body);
-    // var token = sha1(req.body.authToken);
-
-// REMOVE AFTER TESTING
-            return res.json({
-                api_token: displayName,
-                total_points: 0
-            });
-
+    var token = sha1(req.body.authToken);
 
     pg.connect(connectionString, function(err, client, done) {
 
         // SQL Query > Select Data
-        var query = client.query("insert into account(account_id, name, email, authtoken, authtokensecret, remember_me_token, accounttype) " +
-            "values(nextval('account_id_seq'), $1, $2, $3, $4, $5, $6)", [displayName, req.body.userId, req.body.authToken, req.body.authTokenSecret, token, TWITTER_ACCOUNT]);
+        var query = client.query("insert into account(account_id, name, email, authtoken, authtokensecret, remember_me_token, accounttype, password) " +
+            "values(nextval('account_id_seq'), $1, $2, $3, $4, $5, $6, $7)", [displayName, req.body.userId, req.body.authToken, req.body.authTokenSecret, token, TWITTER_ACCOUNT, token]);
 
         // After all data is returned, close connection and return results
         query.on('end', function() {
             client.end();
-            var msgHtml = "Welcome to Lavahound";
-            var msgText = "Welcome to Lavahound";
-
-            var mailOptions = {
-                from: 'dan+lavahound@kelleyland.com', // sender address
-                to: [email], // list of receivers
-                subject: 'Welcome to Lavahound', // Subject line
-                text: msgText, // plaintext body
-                html: msgHtml // html body
-            };
-
-            // // console.log(mailOptions);
-            transporter.sendMail(mailOptions, function(error, info) {
-                if (error) {
-                    console.log(error);
-                }
-                console.log('Message sent: ' + info.response);
-            });
 
             return res.json({
                 api_token: token,

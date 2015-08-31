@@ -107,10 +107,9 @@ static int const TAG_MAP    = 3;
     
     [BackgroundImage release];
     [btnMap release];
+    FlipView = [[UIView alloc] initWithFrame:CGRectMake(0.0f, 50.0f, 320.0f, self.view.frame.size.height)]; //317.0f
     
-    FlipView = [[UIView alloc] initWithFrame:CGRectMake(0.0f, 50.0f, 320.0f, 317.0f)];
-    
-    _photoDetailFrontView = [[LoadingAwareImageView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, FlipView.frame.size.width, FlipView.frame.size.height)];
+    _photoDetailFrontView = [[LoadingAwareImageView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, FlipView.frame.size.width, 320)];
     
     _photoDetailBackView = [[PhotoDetailBackView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, FlipView.frame.size.width, FlipView.frame.size.height)];
     _photoDetailBackView.delegate = self;

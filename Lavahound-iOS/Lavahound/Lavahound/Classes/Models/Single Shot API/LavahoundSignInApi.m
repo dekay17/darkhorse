@@ -59,6 +59,12 @@
     [_lavahoundApi performRequestWithRelativeUrl:@"/sign-in" httpMethod:@"GET" parameters:parameters];
 }
 
+- (void)signInWithTwitterOAuthToken:(NSString *)twitterOAuthToken{
+    NSDictionary *parameters = [NSDictionary dictionaryWithObjectsAndKeys:twitterOAuthToken, @"authToken", @"dan",@"displayName", nil];
+    [_lavahoundApi performRequestWithRelativeUrl:@"/twitter/sign-up" httpMethod:@"POST" parameters:parameters];
+}
+
+
 - (void)signInWithFacebookOAuthToken:(NSString *)facebookOAuthToken {
     NSDictionary *parameters = [NSDictionary dictionaryWithObjectsAndKeys:facebookOAuthToken, @"facebook_oauth_token", nil];    
     [_lavahoundApi performRequestWithRelativeUrl:@"/sign-in" httpMethod:@"POST" parameters:parameters];   
