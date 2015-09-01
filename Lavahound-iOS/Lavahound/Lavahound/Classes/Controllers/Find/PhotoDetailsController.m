@@ -111,7 +111,7 @@ static int const TAG_MAP    = 3;
     
     _photoDetailFrontView = [[LoadingAwareImageView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, FlipView.frame.size.width, 320)];
     
-    _photoDetailBackView = [[PhotoDetailBackView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, FlipView.frame.size.width, FlipView.frame.size.height)];
+    _photoDetailBackView = [[PhotoDetailBackView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, FlipView.frame.size.width, FlipView.frame.size.height -100)];
     _photoDetailBackView.delegate = self;
     [_photoDetailBackView setHidden:TRUE];
     

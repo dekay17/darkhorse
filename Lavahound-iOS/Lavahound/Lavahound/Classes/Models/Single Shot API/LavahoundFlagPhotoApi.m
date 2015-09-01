@@ -51,7 +51,7 @@
                                 reason, @"reason",
                                 nil];    
     
-    [_lavahoundApi performRequestWithRelativeUrl:@"/photos/flag" httpMethod:@"POST" parameters:parameters];        
+    [_lavahoundApi performRequestWithRelativeUrl:[NSString stringWithFormat:@"/photos/flag/%@",photoId] httpMethod:@"GET" parameters:parameters];
 }
 
 @end

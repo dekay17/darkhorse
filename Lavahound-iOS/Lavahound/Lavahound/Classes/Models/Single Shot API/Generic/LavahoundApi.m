@@ -147,8 +147,9 @@
     
     // If this is a POST or PUT, add the parameters to the request body
     if(!getRequest){
-          request.contentType = @"application/json";
-//        request.contentType=@"application/x-www-form-urlencoded";
+//          request.contentType = @"application/json";
+        request.contentType=@"application/x-www-form-urlencoded";
+//          [request.parameters setObject:@"test" forKey:@"userid"];
         [request.parameters addEntriesFromDictionary:parametersWithAdditions];
     }
     [request send];

@@ -63,17 +63,17 @@
 	[emailButton addTarget:self
                     action:@selector(didTouchUpInEmailButton)
           forControlEvents:UIControlEventTouchUpInside];
-	emailButton.frame = CGRectMake(18, 243, emailButtonImage.size.width, emailButtonImage.size.height);
+	emailButton.frame = CGRectMake(((_modelView.width/2) - (emailButtonImage.size.width/2)), 243, emailButtonImage.size.width, emailButtonImage.size.height);
 	[_modelView addSubview:emailButton];
     
-    UIImage *facebookButtonImage = TTIMAGE(@"bundle://buttonFacebook.png");         
-    UIButton *facebookButton = [UIButton buttonWithType:UIButtonTypeCustom];  
-	[facebookButton setImage:facebookButtonImage forState:UIControlStateNormal];
-	[facebookButton addTarget:self
-                       action:@selector(didTouchUpInFacebookButton)
-             forControlEvents:UIControlEventTouchUpInside];
-	facebookButton.frame = CGRectMake(emailButton.right + 6, emailButton.top, facebookButtonImage.size.width, facebookButtonImage.size.height);
-	[_modelView addSubview:facebookButton];     
+//    UIImage *facebookButtonImage = TTIMAGE(@"bundle://buttonFacebook.png");         
+//    UIButton *facebookButton = [UIButton buttonWithType:UIButtonTypeCustom];  
+//	[facebookButton setImage:facebookButtonImage forState:UIControlStateNormal];
+//	[facebookButton addTarget:self
+//                       action:@selector(didTouchUpInFacebookButton)
+//             forControlEvents:UIControlEventTouchUpInside];
+//	facebookButton.frame = CGRectMake(emailButton.right + 6, emailButton.top, facebookButtonImage.size.width, facebookButtonImage.size.height);
+//	[_modelView addSubview:facebookButton];     
 }
 
 #pragma mark -
