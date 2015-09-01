@@ -37,6 +37,7 @@ module.exports = function(app, express) {
         var router = express.Router();
         // middleware to use for all requests
         router.use(function(req, res, next) {
+            //console.log(req);
             // do logging
             console.log(req.path);
 
@@ -634,8 +635,10 @@ module.exports = function(app, express) {
         });
 
 
-        router.post('/photos/flag', function(req, res) {
-            res.json({});
+        router.get('/photos/flag/:photo_id', function(req, res) {
+            console.log("Flagged ", req.params.photo_id, req.account_id);
+            console.log(req.query);
+            return res.json({ success: true });
         });
 
         router.get('/users/show', function(req, res) {
