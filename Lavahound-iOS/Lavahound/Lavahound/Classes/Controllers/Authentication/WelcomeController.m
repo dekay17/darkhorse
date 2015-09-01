@@ -179,7 +179,6 @@
             [LocalStorage sharedInstance].totalPoints = totalPoints;
             dispatch_async(dispatch_get_main_queue(), ^{
                 [[TTURLCache sharedCache] removeAll:YES];
-                [self dismissModalViewControllerAnimated:NO];
                 [[TTNavigator navigator] removeAllViewControllers];
                 [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://tab-bar"] applyAnimated:YES]];
             });
