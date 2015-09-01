@@ -374,6 +374,7 @@ module.exports = function(app, express) {
             var results = {};
             results.photos = [];
 
+            photoLocations = [];
 
             var lat = req.query.lat;
             var lng = req.query.lng;
@@ -394,13 +395,18 @@ module.exports = function(app, express) {
                     if (adminIds.indexOf(parseInt(req.account_id)) > -1) {
                         row.found = false;
                     }
-
+                    photoLocations.push({latitude: row.latitude, longitude: row.longitude});
                     results.photos.push(row);
                 });
+
+
 
                 // After all data is returned, close connection and return results
                 query.on('end', function() {
                     client.end();
+                    var center = geolib.getCenter(photoLocations);
+                    results.latitude = center.latitude;
+                    results.longitude = center.longitude;
                     return res.json(results);
                 });
 
