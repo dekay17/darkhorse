@@ -15,8 +15,6 @@ var sha1 = require('sha1');
 var geolib = require('geolib');
 var bodyParser = require('body-parser');
 
-
-
 var publicUrls = ["/sign-in", "/sign-up", "/twitter/sign-in", "/terms-and-conditions", "/privacy-policy"]
 
 var nodemailer = require("nodemailer");
