@@ -8,6 +8,7 @@ pg.defaults.poolSize = 20;
 var connectionString = process.env.DATABASE_URL || 'postgres://lavahound:h0und@localhost:5432/lavahound';
 
 var cloudfront_base = "https://s3.amazonaws.com/lavahound-hunts/";
+var user_icon_base = "https://s3.amazonaws.com/user-icons/";
 
 var fs = require('fs');
 var sha1 = require('sha1');
@@ -511,8 +512,8 @@ module.exports = function(app, express) {
                 query.on('row', function(row) {
                     row.image_url = cloudfront_base + row.image_file_name;
                     row.proximity_description = row.miles + " miles";
-                    row.submitted_by_image_url = "https://avatars2.githubusercontent.com/u/12318?v=3&s=230";
-                    row.submitted_by = "lkelley";
+                    row.submitted_by_image_url = user_icon_base + row.submitter + ".jpg";
+                    row.submitted_by = row.submitter;
                     row.shot_information = row.description;
                     if (adminIds.indexOf(parseInt(req.account_id)) > -1) {
                         row.found = false;
