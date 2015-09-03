@@ -21,6 +21,8 @@ var nodemailer = require("nodemailer");
 var sesTransport = require('nodemailer-ses-transport');
 
 var transporter = nodemailer.createTransport(sesTransport({
+    accessKeyId: "AWSACCESSKEY",
+    secretAccessKey: "AWS/Secret/key",
     rateLimit: 5
 }));
 
@@ -189,11 +191,25 @@ module.exports = function(app, express) {
         router.get('/sign-up', function(req, res) {
             var displayName = req.query.display_name;
             var password = req.query.password;
+            var passwordConfirm = req.query.password_confirm;
             var email = req.query.email_address;
             console.log(displayName);
             var hash = sha1(password);
             var token = sha1(email);
             console.log(email, hash);
+
+            if (!email){
+                    return res.status(400).json({
+                        "error_message": "Sorry, must provide an email"
+                    });                
+            }
+            if (!password || !passwordConfirm || (password.trim() != passwordConfirm.trim())){
+                    return res.status(400).json({
+                        "error_message": "Sorry, passwords don't match"
+                    });                
+            }
+
+
 
             pg.connect(connectionString, function(err, client, done) {
 
@@ -395,7 +411,10 @@ module.exports = function(app, express) {
                     if (adminIds.indexOf(parseInt(req.account_id)) > -1) {
                         row.found = false;
                     }
-                    photoLocations.push({latitude: row.latitude, longitude: row.longitude});
+                    photoLocations.push({
+                        latitude: row.latitude,
+                        longitude: row.longitude
+                    });
                     results.photos.push(row);
                 });
 
@@ -637,7 +656,9 @@ module.exports = function(app, express) {
         router.get('/photos/flag/:photo_id', function(req, res) {
             console.log("Flagged ", req.params.photo_id, req.account_id);
             console.log(req.query);
-            return res.json({ success: true });
+            return res.json({
+                success: true
+            });
         });
 
         router.get('/users/show', function(req, res) {
@@ -718,6 +739,38 @@ module.exports = function(app, express) {
                             rank_description: get_rank_label(user_rank, results[1].total)
                         }
                     });
+                });
+            });
+        });
+
+        router.get('/email-test', function(req, res) {
+            var displayName = req.query.display_name;
+            var email = req.query.email_address;
+            var msgHtml = "Welcome to Lavahound";
+            var msgText = "Welcome to Lavahound";
+
+            console.log("sending email to ", email);
+
+            var mailOptions = {
+                from: 'dan+lavahound@kelleyland.com', // sender address
+                to: [email], // list of receivers
+                subject: 'Welcome to Lavahound', // Subject line
+                text: msgText, // plaintext body
+                html: msgHtml // html body
+            };
+
+            // // console.log(mailOptions);
+            transporter.sendMail(mailOptions, function(error, info) {
+                if (error) {
+                    console.log(error);
+                    return res.json({
+                        error: error
+                    });
+                }
+                console.log('Message sent: ' + info.response);
+                return res.json({
+                    email: email,
+                    response: info.response
                 });
             });
         });
