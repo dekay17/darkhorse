@@ -236,7 +236,7 @@ module.exports = function(app, express) {
                         if (error) {
                             console.log(error);
                         }
-                        console.log('Message sent: ' + info.response);
+                        console.log('Message sent: ' + info);
                     });
 
                     return res.json({
@@ -270,7 +270,7 @@ module.exports = function(app, express) {
                 if (req.query.lat) {
                     var query = client.query("select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude, count(hunt_id) hunt_count, " +
                         "round((point(p.longitude, p.latitude) <@> point(" + req.query.lng + "," + req.query.lat + "))::numeric, 2) as miles " +
-                        "from place p, hunt h where p.place_id = h.place_id group by p.place_id, p.name,p.description, p.image_file_name,p.latitude,p.longitude, miles  " +
+                        "from place p, hunt h where h.active = true and p.place_id = h.place_id group by p.place_id, p.name,p.description, p.image_file_name,p.latitude,p.longitude, miles  " +
                         "order by round((point(p.longitude, p.latitude) <@> point(" + req.query.lng + "," + req.query.lat + "))::numeric, 3)");
                 } else {
                     var query = client.query("select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude, count(hunt_id) hunt_count from place p, hunt h " +
@@ -353,7 +353,7 @@ module.exports = function(app, express) {
                 // SQL Query > Select Data
                 var huntQuery = function(callback) {
                     client.query("select h.*, count(hp.photo_id) as total_count, count(pf.photo_id) as found_count  " +
-                        "from hunt h, hunt_photo hp left outer join photo_found pf on pf.photo_id = hp.photo_id and pf.account_id = $1 where h.place_id = $2 and h.hunt_id = hp.hunt_id " +
+                        "from hunt h, hunt_photo hp left outer join photo_found pf on pf.photo_id = hp.photo_id and pf.account_id = $1 where h.place_id = $2 and h.hunt_id = hp.hunt_id and h.active = true " +
                         "group by h.hunt_id", [req.account_id, req.query.place_id],
                         function(err, result) {
                             done();
