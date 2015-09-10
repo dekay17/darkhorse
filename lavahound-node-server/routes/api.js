@@ -20,9 +20,16 @@ var publicUrls = ["/sign-in", "/sign-up", "/twitter/sign-in", "/terms-and-condit
 var nodemailer = require("nodemailer");
 var sesTransport = require('nodemailer-ses-transport');
 
+// IAM User Name   ses-smtp-user.20150904-154133
+// Smtp Username   AKIAIRQ5JDSTPVUCZOAQ
+// Smtp Password   Al+Emw9h0k6iuh1ZD865QZ0/m+o3ydvslLyPbirNErG8
+
+// Access Key ID:AKIAJTAWYW2FCCRPBCCA
+//Secret Access Key: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
+
 var transporter = nodemailer.createTransport(sesTransport({
-    accessKeyId: "AWSACCESSKEY",
-    secretAccessKey: "AWS/Secret/key",
+    accessKeyId: "AKIAJTAWYW2FCCRPBCCA",
+    secretAccessKey: "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",
     rateLimit: 5
 }));
 
@@ -746,13 +753,13 @@ module.exports = function(app, express) {
         router.get('/email-test', function(req, res) {
             var displayName = req.query.display_name;
             var email = req.query.email_address;
-            var msgHtml = "Welcome to Lavahound";
+            var msgHtml = "<b>Welcome to Lavahound</b><br/>Please get started";
             var msgText = "Welcome to Lavahound";
 
             console.log("sending email to ", email);
 
             var mailOptions = {
-                from: 'dan+lavahound@kelleyland.com', // sender address
+                from: 'support@lavahound.com', // sender address
                 to: [email], // list of receivers
                 subject: 'Welcome to Lavahound', // Subject line
                 text: msgText, // plaintext body
