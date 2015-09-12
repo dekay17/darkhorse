@@ -115,6 +115,19 @@ static int const TAG_MAP    = 3;
     _photoDetailBackView.delegate = self;
     [_photoDetailBackView setHidden:TRUE];
     
+    UISwipeGestureRecognizer *rightRecognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(rightSwipeHandle:)];
+    rightRecognizer.direction = UISwipeGestureRecognizerDirectionRight;
+    [rightRecognizer setNumberOfTouchesRequired:1];
+    [_modelView addGestureRecognizer:rightRecognizer];
+    [rightRecognizer release];
+    
+    //........towards left Gesture recogniser for swiping.....//
+    UISwipeGestureRecognizer *leftRecognizer = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(leftSwipeHandle:)];
+    leftRecognizer.direction = UISwipeGestureRecognizerDirectionLeft;
+    [leftRecognizer setNumberOfTouchesRequired:1];
+    [_modelView addGestureRecognizer:leftRecognizer];
+    [leftRecognizer release];
+    
     [FlipView addSubview:_photoDetailFrontView];
     [FlipView addSubview:_photoDetailBackView];
     [_modelView addSubview:FlipView];
@@ -267,6 +280,16 @@ static int const TAG_MAP    = 3;
     KeepFoundItVisible = TRUE;
     Photo *photo = ((PhotoDetailsModel *)self.model).photo;    
     [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:[photo URLValueWithName:@"share-modal"]] applyAnimated:YES]];
+}
+
+- (void)rightSwipeHandle:(UISwipeGestureRecognizer*)gestureRecognizer
+{
+    NSLog(@"rightSwipeHandle");
+}
+
+- (void)leftSwipeHandle:(UISwipeGestureRecognizer*)gestureRecognizer
+{
+    NSLog(@"leftSwipeHandle");
 }
 
 //- (void)flipViewsWithAnimationTransition:(UIViewAnimationTransition)animationTransition {

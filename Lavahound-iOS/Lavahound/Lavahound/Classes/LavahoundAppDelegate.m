@@ -57,6 +57,7 @@
     
     NSLog(@"********** didFinishLaunchingWithOptions **********");
 //    [Fabric with:@[CrashlyticsKit]];
+//    [Fabric with:@[TwitterKit]];
 
     [Fabric with:@[[Crashlytics class], [Twitter class]]];
 
