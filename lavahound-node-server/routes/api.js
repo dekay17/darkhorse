@@ -31,7 +31,7 @@ var LAVAHOUND_ACCOUNT = 1000;
 
 var TWITTER_ACCOUNT = 1001;
 
-var adminIds = [1, 1003];
+var adminIds = [1, 1003, 1010];
 module.exports = function(app, express) {
         app.use(bodyParser.json());
 
@@ -619,7 +619,7 @@ module.exports = function(app, express) {
                             return res.json({
                                 distance: meters,
                                 results: results,
-                                total_points: results[resultsLength - 1].total_points.toString(),
+                                total_points: 10, //results[resultsLength - 1].total_points.toString(),
                                 message: initial_results.found_msg,
                                 points: initial_results.points.toString()
                             });
