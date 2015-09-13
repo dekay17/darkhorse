@@ -8,11 +8,12 @@
 
 import Foundation
 
-var baseUrl = "http://localhost:3001/api/"
+
+//var baseUrl = "http://localhost:3001/api/"
 
 @objc class API {
     class func postToServer(endPoint:String, parameters:NSDictionary, successBlock: (apiToken :NSString, totalPoints:NSString) ->(), failureBlock: (error :NSError) ->()){
-            var url: NSURL = NSURL(string: baseUrl + endPoint)!
+            var url: NSURL = NSURL(string: endPoint)!
             var request1: NSMutableURLRequest = NSMutableURLRequest(URL: url)
         
             request1.HTTPMethod = "POST"
@@ -28,8 +29,11 @@ var baseUrl = "http://localhost:3001/api/"
             let queue:NSOperationQueue = NSOperationQueue()
         
             NSURLConnection.sendAsynchronousRequest(request1, queue: queue, completionHandler:{ (response: NSURLResponse!, data: NSData!, var error: NSError!) -> Void in
-                let statusCode = (response as! NSHTTPURLResponse).statusCode
-                
+                println("response = \(response)")
+                var statusCode = 000;
+                if (response != nil){
+                    statusCode = (response as! NSHTTPURLResponse).statusCode
+                }
                 println("Data\(data) \(error)");
                 if (statusCode == 200){
                     var err: NSError?

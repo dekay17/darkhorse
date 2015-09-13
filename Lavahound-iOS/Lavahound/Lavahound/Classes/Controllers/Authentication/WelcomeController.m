@@ -11,6 +11,7 @@
 #import <TwitterKit/TwitterKit.h>
 #import "Lavahound-Swift.h"
 #import "LocalStorage.h"
+#import "Constants.h"
 
 @interface WelcomeController(PrivateMethods)
 
@@ -63,34 +64,45 @@
 	signInButton.frame = CGRectMake(10, 238, signInButtonImage.size.width, signInButtonImage.size.height);
 	[self.view addSubview:signInButton];
     
-    TWTRLogInButton *logInButton = [TWTRLogInButton buttonWithType:UIButtonTypeCustom];
-    [logInButton addTarget:self
-                     action:@selector(didTouchUpInTwitterStartButton)
-           forControlEvents:UIControlEventTouchUpInside];
-    logInButton.frame = CGRectMake(10, 238, signInButtonImage.size.width, signInButtonImage.size.height);
-    [self.view addSubview:logInButton];
+//    TWTRLogInButton *logInButton = [TWTRLogInButton buttonWithType:UIButtonTypeCustom];
+//    [logInButton addTarget:self
+//                     action:@selector(didTouchUpInTwitterStartButton)
+//           forControlEvents:UIControlEventTouchUpInside];
+//    logInButton.frame = CGRectMake(10, 238, signInButtonImage.size.width, signInButtonImage.size.height);
     
-//    TWTRLogInButton *logInButton = [TWTRLogInButton buttonWithLogInCompletion:^(TWTRSession *session, NSError *error) {
-        // play with Twitter session
-//        NSMutableDictionary *params = [NSMutableDictionary dictionary];
-//        [params setObject:session.userName forKey:@"displayName"];
-//        [params setObject:session.userID forKey:@"userId"];
-//        [params setObject:session.authToken forKey:@"authToken"];
-//        [params setObject:session.authTokenSecret forKey:@"authTokenSecret"];
-//        [API postToServer:@"twitter/sign-up" parameters:params successBlock:^(NSString *apiToken) {
-//            [LocalStorage sharedInstance].apiToken = apiToken;
-//            [LocalStorage sharedInstance].totalPoints = 0;
-//            [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://sign-up"] applyAnimated:YES]];
-//
-////            [self performPostSignInProcessing];
-//        } failureBlock:^(NSError *error) {
-//            // Handle error
-//            NSLog(@"error %@", error);
-//        }];
-//        LavahoundSignInApi *lavahoundSignInApi = [[[LavahoundSignInApi alloc] init] autorelease];
-//        lavahoundSignInApi.delegate = self;
-//        [lavahoundSignInApi signInWithTwitterOAuthToken:session.authToken];
-//    }];
+    TWTRLogInButton *logInButton = [TWTRLogInButton buttonWithLogInCompletion:^(TWTRSession *session, NSError *error) {
+//         play with Twitter session
+        if (error == nil){
+            NSMutableDictionary *params = [NSMutableDictionary dictionary];
+            [params setObject:session.userName forKey:@"displayName"];
+            [params setObject:session.userID forKey:@"userId"];
+            [params setObject:session.authToken forKey:@"authToken"];
+            [params setObject:session.authTokenSecret forKey:@"authTokenSecret"];
+            NSLog(@"params %@", params);
+            NSString *endpoint = [NSString stringWithFormat:@"%@%@", [Constants sharedInstance].apiEndpointAbsoluteUrlPrefix, @"twitter/sign-in"];
+            
+            [API postToServer:endpoint parameters:params successBlock:^(NSString *apiToken, NSString *totalPoints) {
+                [LocalStorage sharedInstance].apiToken = apiToken;
+                [LocalStorage sharedInstance].totalPoints = totalPoints;
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [[TTURLCache sharedCache] removeAll:YES];
+                    [[TTNavigator navigator] removeAllViewControllers];
+                    [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://tab-bar"] applyAnimated:YES]];
+                });
+            } failureBlock:^(NSError *postError) {
+                // Handle error
+                TTAlert(@"Error logging in with Twitter");
+                NSLog(@"error %@", postError);
+            }];
+            
+        }else{
+            if (error.code )
+                TTAlert(error.description);
+            NSLog(@"error %@", error);
+        }
+    }];
+//    [self.view addSubview:logInButton];
+
     logInButton.frame = CGRectMake(10, signInButton.bottom + 10, signInButtonImage.size.width, signInButtonImage.size.height);
     [self.view addSubview:logInButton];
     
@@ -167,27 +179,38 @@
     [lavahoundPlayNowApi playNow];
 }
 
-- (void)didTouchUpInTwitterStartButton {
-    [[Twitter sharedInstance] logInWithCompletion:^(TWTRSession *session, NSError *error) {
-        NSMutableDictionary *params = [NSMutableDictionary dictionary];
-        [params setObject:session.userName forKey:@"displayName"];
-        [params setObject:session.userID forKey:@"userId"];
-        [params setObject:session.authToken forKey:@"authToken"];
-        [params setObject:session.authTokenSecret forKey:@"authTokenSecret"];
-        [API postToServer:@"twitter/sign-in" parameters:params successBlock:^(NSString *apiToken, NSString *totalPoints) {
-            [LocalStorage sharedInstance].apiToken = apiToken;
-            [LocalStorage sharedInstance].totalPoints = totalPoints;
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [[TTURLCache sharedCache] removeAll:YES];
-                [[TTNavigator navigator] removeAllViewControllers];
-                [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://tab-bar"] applyAnimated:YES]];
-            });
-        } failureBlock:^(NSError *error) {
-            // Handle error
-            NSLog(@"error %@", error);
-        }];
-    }];
-}
+//- (void)didTouchUpInTwitterStartButton {
+//    [[Twitter sharedInstance] logInWithCompletion:^(TWTRSession *session, NSError *error) {
+//        if (error == nil){
+//            NSMutableDictionary *params = [NSMutableDictionary dictionary];
+//            [params setObject:session.userName forKey:@"displayName"];
+//            [params setObject:session.userID forKey:@"userId"];
+//            [params setObject:session.authToken forKey:@"authToken"];
+//            [params setObject:session.authTokenSecret forKey:@"authTokenSecret"];
+//            NSLog(@"params %@", params);
+//            NSString *endpoint = [NSString stringWithFormat:@"%@%@", [Constants sharedInstance].apiEndpointAbsoluteUrlPrefix, @"twitter/sign-in"];
+//            
+//            [API postToServer:endpoint parameters:params successBlock:^(NSString *apiToken, NSString *totalPoints) {
+//                [LocalStorage sharedInstance].apiToken = apiToken;
+//                [LocalStorage sharedInstance].totalPoints = totalPoints;
+//                dispatch_async(dispatch_get_main_queue(), ^{
+//                    [[TTURLCache sharedCache] removeAll:YES];
+//                    [[TTNavigator navigator] removeAllViewControllers];
+//                    [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://tab-bar"] applyAnimated:YES]];
+//                });
+//            } failureBlock:^(NSError *postError) {
+//                // Handle error
+//                TTAlert(@"Error logging in with Twitter");
+//                NSLog(@"error %@", postError);
+//            }];
+//            
+//        }else{
+//            if (error.code )
+//            TTAlert(error.description);
+//            NSLog(@"error %@", error);
+//        }
+//    }];
+//}
 
 - (void)performPostSignInProcessing {
     [[TTURLCache sharedCache] removeAll:YES];
