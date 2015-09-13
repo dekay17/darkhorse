@@ -164,6 +164,7 @@ module.exports = function(app, express) {
                     "where email = $1 group by email, remember_me_token", [req.body.userId],
                     function(err, result) {
                         if (!err) {
+                            console.log("found " + result.rows.length);
                             if (result.rows.length == 1) {
                                 return res.json({
                                     api_token: result.rows[0].remember_me_token,
@@ -174,10 +175,10 @@ module.exports = function(app, express) {
                                 client.query("insert into account(account_id, name, email, authtoken, authtokensecret, remember_me_token, accounttype, password) " +
                                     "values(nextval('account_id_seq'), $1, $2, $3, $4, $5, $6, $7)", [displayName, req.body.userId, req.body.authToken, req.body.authTokenSecret, token, TWITTER_ACCOUNT, token],
                                     function(err, result) {
-                                        if (err) {
+                                        if (!err) {
                                             return res.json({
                                                 api_token: token,
-                                                total_points: 0
+                                                total_points: "0"
                                             });
                                         } else {
                                             return res.status(400).json({
@@ -623,10 +624,11 @@ module.exports = function(app, express) {
                                 });
                             client.end();
                             var resultsLength = results.length;
+                            var points = results[resultsLength - 1].total_points.toString()
                             return res.json({
                                 distance: meters,
                                 results: results,
-                                total_points: 10, //results[resultsLength - 1].total_points.toString(),
+                                total_points: "0",
                                 message: initial_results.found_msg,
                                 points: initial_results.points.toString()
                             });
