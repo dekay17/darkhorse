@@ -628,8 +628,8 @@ module.exports = function(app, express) {
                         distanceCheckEnabled = false;
                     }
 
-                    console.log("cheching : ", initial_results.latitude, initial_results.longitude);
-                    console.log("cheching : ", req.query.lat, req.query.lng);
+                    console.log("checking : ", initial_results.latitude, initial_results.longitude);
+                    console.log("checking : ", req.query.lat, req.query.lng);
 
                     var meters = geolib.getDistance({
                         latitude: initial_results.latitude,
