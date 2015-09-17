@@ -407,9 +407,9 @@ module.exports = function(app, express) {
 
                 // SQL Query > Select Data
 
-                var query = client.query("select p.*, round((point(p.longitude, p.latitude) <@> point($1,$2))::numeric, 2) as miles, count(pf1.photo_id) as found from " +
+                var query = client.query("select p.photo_id, p.account_id, p.image_file_name, p.title, p.description, p.found_msg, p.points, p.latitude, p.longitude, p.created_date, p.updated_date, p.submitter, round((point(p.longitude, p.latitude) <@> point($1,$2))::numeric, 2) as miles, count(pf1.photo_id) as found from " +
                     "photo p left outer join photo_found pf1 on pf1.photo_id = p.photo_id and pf1.account_id = $3, hunt_photo hp where hp.hunt_id = $4 and hp.photo_id = p.photo_id and depends_on_photo is null " +
-                    "group by p.photo_id, depends_on_photo union select p.*, round((point(p.longitude, p.latitude) <@> point($1,$2))::numeric, 2) as miles, 1 as found from photo p " + 
+                    "group by p.photo_id, depends_on_photo union select  p.photo_id, p.account_id, p.image_file_name, p.title, p.description, p.found_msg, p.points, p.latitude, p.longitude, p.created_date, p.updated_date, p.submitter, round((point(p.longitude, p.latitude) <@> point($1,$2))::numeric, 2) as miles, 1 as found from photo p " + 
                     "left outer join photo_found pf1 on pf1.photo_id = p.photo_id and pf1.account_id = $3, hunt_photo hp where hp.hunt_id = $4 and hp.photo_id = p.photo_id and hp.depends_on_photo in (select photo_id " +
                     "from photo_found where account_id = $3) group by p.photo_id, depends_on_photo union " +
                     "select p.photo_id, p.account_id, 'blue_question_mark.png' as image_file_name, p.title, p.description, p.found_msg, p.points, 0 as latitude, 0 as longitude, p.created_date, p.updated_date, p.submitter, null as miles, 0 as found " +
@@ -545,13 +545,13 @@ module.exports = function(app, express) {
             pg.connect(connectionString, function(err, client, done) {
 
                 // SQL Query > Select Data
-                var query = client.query("select p.*, count(pf.photo_id) as times_found, count(pf1.photo_id) >0 as found from photo p left outer join photo_found pf on pf.photo_id = p.photo_id " +
+                var query = client.query("select p.photo_id, p.account_id, p.image_file_name, p.title, p.description, p.found_msg, p.points, p.latitude, p.longitude, p.created_date, p.updated_date, p.submitter, count(pf.photo_id) as times_found, count(pf1.photo_id) >0 as found from photo p left outer join photo_found pf on pf.photo_id = p.photo_id " +
                     "left outer join photo_found pf1 on pf1.photo_id = $1 and pf1.account_id = $2 WHERE p.photo_id = $1 and (select count(hp.photo_id) from hunt_photo hp, photo_found pf " +
                     "where account_id = $2 and hp.photo_id = $1 and hp.depends_on_photo = pf.photo_id) > 0 group by p.photo_id union select p.photo_id, p.account_id, 'blue_question_mark.png' as image_file_name, " +
                     " p.title, 'You need to unlock this picture to get the description' as description, p.found_msg, p.points, 0 as latitude, 0 as longitude, p.created_date, p.updated_date, p.submitter, count(pf.photo_id) as times_found, count(pf1.photo_id) >0 as found " +
                     "from photo p left outer join photo_found pf on pf.photo_id = p.photo_id left outer join photo_found pf1 on pf1.photo_id = $1 and pf1.account_id = $2 WHERE p.photo_id = $1 " + 
                     "and (select count(hp.photo_id) from hunt_photo hp, photo_found pf where account_id = $2 and hp.photo_id = $1 and hp.depends_on_photo = pf.photo_id) = 0 group by p.photo_id", [parseInt(req.params.photo_id), parseInt(req.account_id)]);
-                // console.log(query);
+                console.log(query);
                 // var query = client.query("select p.* from photo p");
                 // Stream results back one row at a time
                 query.on('row', function(row) {
