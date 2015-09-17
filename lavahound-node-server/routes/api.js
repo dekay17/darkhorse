@@ -410,11 +410,11 @@ module.exports = function(app, express) {
                 var query = client.query("select p.photo_id, p.account_id, p.image_file_name, p.title, p.description, p.found_msg, p.points, p.latitude, p.longitude, p.created_date, p.updated_date, p.submitter, round((point(p.longitude, p.latitude) <@> point($1,$2))::numeric, 2) as miles, count(pf1.photo_id) as found from " +
                     "photo p left outer join photo_found pf1 on pf1.photo_id = p.photo_id and pf1.account_id = $3, hunt_photo hp where hp.hunt_id = $4 and hp.photo_id = p.photo_id and depends_on_photo is null " +
                     "group by p.photo_id, depends_on_photo union select  p.photo_id, p.account_id, p.image_file_name, p.title, p.description, p.found_msg, p.points, p.latitude, p.longitude, p.created_date, p.updated_date, p.submitter, round((point(p.longitude, p.latitude) <@> point($1,$2))::numeric, 2) as miles, 1 as found from photo p " + 
-                    "left outer join photo_found pf1 on pf1.photo_id = p.photo_id and pf1.account_id = $3, hunt_photo hp where hp.hunt_id = $4 and hp.photo_id = p.photo_id and hp.depends_on_photo in (select photo_id " +
+                    "left outer join photo_found pf1 on pf1.photo_id = p.photo_id and pf1.account_id = $3, hunt_photo hp where hp.hunt_id = $4 and hp.photo_id = p.photo_id and hp.depends_on_photo is not null  and hp.depends_on_photo in (select photo_id " +
                     "from photo_found where account_id = $3) group by p.photo_id, depends_on_photo union " +
                     "select p.photo_id, p.account_id, 'locked_photo.jpg' as image_file_name, p.title, p.description, p.found_msg, p.points, 0 as latitude, 0 as longitude, p.created_date, p.updated_date, p.submitter, null as miles, 0 as found " +
                     "from photo p left outer join photo_found pf1 on pf1.photo_id = p.photo_id and pf1.account_id = $3, hunt_photo hp " +
-                    "where hp.hunt_id = $4 and hp.photo_id = p.photo_id and hp.depends_on_photo not in (select photo_id from photo_found where account_id = $3) " +
+                    "where hp.hunt_id = $4 and hp.photo_id = p.photo_id and hp.depends_on_photo is not null and hp.depends_on_photo not in (select photo_id from photo_found where account_id = $3) " +
                     "group by p.photo_id, depends_on_photo order by miles", [lng, lat, req.account_id, req.params.hunt_id]);
 
 
@@ -435,10 +435,12 @@ module.exports = function(app, express) {
                     if (adminIds.indexOf(parseInt(req.account_id)) > -1) {
                         row.found = false;
                     }
-                    photoLocations.push({
-                        latitude: row.latitude,
-                        longitude: row.longitude
-                    });
+                    if (row.latitude != 0 && row.longitude != 0){
+                        photoLocations.push({
+                            latitude: row.latitude,
+                            longitude: row.longitude
+                        });
+                    }
                     results.photos.push(row);
                 });
 
@@ -551,7 +553,7 @@ module.exports = function(app, express) {
                     "(hp.depends_on_photo is null or hp.depends_on_photo in (select photo_id from photo_found where account_id = $2)) group by p.photo_id union select p.photo_id, p.account_id, " + 
                     "'locked_photo.jpg' as image_file_name, p.title, 'You need to unlock this picture to get the description' as description, p.found_msg, p.points, p.latitude, p.longitude, " + 
                     "p.created_date, p.updated_date, p.submitter ,count(pf.photo_id) as times_found, count(pf1.photo_id) >0 as found from photo p left outer join photo_found pf on pf.photo_id = p.photo_id " + 
-                    "left outer join photo_found pf1 on pf1.photo_id = $1 and pf1.account_id = $2, hunt_photo hp WHERE p.photo_id = $1 and hp.photo_id = p.photo_id and hp.depends_on_photo " + //and hunt_id = 1000 
+                    "left outer join photo_found pf1 on pf1.photo_id = $1 and pf1.account_id = $2, hunt_photo hp WHERE p.photo_id = $1 and hp.photo_id = p.photo_id and hp.depends_on_photo is not null and hp.depends_on_photo " + //and hunt_id = 1000 
                     "not in (select photo_id from photo_found where account_id = $2) group by p.photo_id", [parseInt(req.params.photo_id), parseInt(req.account_id)]);
                 console.log(query);
                 // var query = client.query("select p.* from photo p");
@@ -646,11 +648,12 @@ module.exports = function(app, express) {
                                 });
                             client.end();
                             var resultsLength = results.length;
-                            var points = results[resultsLength - 1].total_points.toString()
+                            var points = results[resultsLength - 1].total_points == null ? "0" : results[resultsLength - 1].total_points.toString();
+				console.log("points", points);
                             return res.json({
                                 distance: meters,
                                 results: results,
-                                total_points: "0",
+                                total_points: points,
                                 message: initial_results.found_msg,
                                 points: initial_results.points.toString()
                             });
