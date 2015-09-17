@@ -51,7 +51,7 @@ static LavahoundEmailer *kSharedInstance = nil;
 - (void)emailContactUs {
     NSArray *to = [NSArray arrayWithObject:@"info@lavahound.com"];
     NSString *subject = @"Contact Us!";
-    NSString *body = @"Dear Mr. Hound<br/>I have a question about....";
+    NSString *body = @"Lavahound<br/>I wanted to contact you about....";
     [self sendEmailWithSubject:subject body:body to:to];
 }
 
