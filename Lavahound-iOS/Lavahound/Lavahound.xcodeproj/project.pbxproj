@@ -132,7 +132,6 @@
 		0C7B3231139FD26400477A74 /* forgotPasswordLink.png in Resources */ = {isa = PBXBuildFile; fileRef = 0C7B322B139FD25700477A74 /* forgotPasswordLink.png */; };
 		0C7B3232139FD26400477A74 /* forgotPasswordLink@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 0C7B322C139FD25B00477A74 /* forgotPasswordLink@2x.png */; };
 		0C7B3233139FD26400477A74 /* forgotPasswordPageBG.png in Resources */ = {isa = PBXBuildFile; fileRef = 0C7B322D139FD25E00477A74 /* forgotPasswordPageBG.png */; };
-		0C7B3234139FD26400477A74 /* forgotPasswordPageBG@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 0C7B322E139FD26000477A74 /* forgotPasswordPageBG@2x.png */; };
 		0C7B3237139FF0CC00477A74 /* congratsBG.png in Resources */ = {isa = PBXBuildFile; fileRef = 0C7B3235139FF0C500477A74 /* congratsBG.png */; };
 		0C7B3238139FF0CC00477A74 /* congratsBG@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 0C7B3236139FF0C900477A74 /* congratsBG@2x.png */; };
 		0C7B323B139FF93300477A74 /* buttonShare.png in Resources */ = {isa = PBXBuildFile; fileRef = 0C7B3239139FF92C00477A74 /* buttonShare.png */; };
@@ -381,6 +380,7 @@
 		69FC276E1B8804160046BE3D /* spotlightIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FC276A1B8804160046BE3D /* spotlightIcon.png */; };
 		69FC276F1B8804160046BE3D /* spotlightIcon@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FC276B1B8804160046BE3D /* spotlightIcon@2x.png */; };
 		69FC27731B8805760046BE3D /* icon-120.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FC27721B8805760046BE3D /* icon-120.png */; };
+		69FF0A921BB3948E00FEFDCF /* forgotPasswordPageBG@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FF0A911BB3948E00FEFDCF /* forgotPasswordPageBG@2x.png */; settings = {ASSET_TAGS = (); }; };
 		D502145E14FD286D003581DA /* AdminController.m in Sources */ = {isa = PBXBuildFile; fileRef = D502145D14FD286D003581DA /* AdminController.m */; };
 		D502146014FD31CA003581DA /* Admin.xib in Resources */ = {isa = PBXBuildFile; fileRef = D502145F14FD31CA003581DA /* Admin.xib */; };
 		D55599ED151A468D0063F4D8 /* SignUp.xib in Resources */ = {isa = PBXBuildFile; fileRef = D55599EC151A468D0063F4D8 /* SignUp.xib */; };
@@ -786,7 +786,6 @@
 		0C7B322B139FD25700477A74 /* forgotPasswordLink.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = forgotPasswordLink.png; sourceTree = "<group>"; };
 		0C7B322C139FD25B00477A74 /* forgotPasswordLink@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "forgotPasswordLink@2x.png"; sourceTree = "<group>"; };
 		0C7B322D139FD25E00477A74 /* forgotPasswordPageBG.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = forgotPasswordPageBG.png; sourceTree = "<group>"; };
-		0C7B322E139FD26000477A74 /* forgotPasswordPageBG@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "forgotPasswordPageBG@2x.png"; sourceTree = "<group>"; };
 		0C7B3235139FF0C500477A74 /* congratsBG.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = congratsBG.png; sourceTree = "<group>"; };
 		0C7B3236139FF0C900477A74 /* congratsBG@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "congratsBG@2x.png"; sourceTree = "<group>"; };
 		0C7B3239139FF92C00477A74 /* buttonShare.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = buttonShare.png; sourceTree = "<group>"; };
@@ -1096,6 +1095,7 @@
 		69FC276A1B8804160046BE3D /* spotlightIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = spotlightIcon.png; sourceTree = "<group>"; };
 		69FC276B1B8804160046BE3D /* spotlightIcon@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "spotlightIcon@2x.png"; sourceTree = "<group>"; };
 		69FC27721B8805760046BE3D /* icon-120.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-120.png"; sourceTree = "<group>"; };
+		69FF0A911BB3948E00FEFDCF /* forgotPasswordPageBG@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "forgotPasswordPageBG@2x.png"; sourceTree = "<group>"; };
 		D502145C14FD286D003581DA /* AdminController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AdminController.h; sourceTree = "<group>"; };
 		D502145D14FD286D003581DA /* AdminController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AdminController.m; sourceTree = "<group>"; };
 		D502145F14FD31CA003581DA /* Admin.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; name = Admin.xib; path = "Interface Builder/Admin.xib"; sourceTree = "<group>"; };
@@ -1906,6 +1906,7 @@
 				0CE1246B13CF8B2F00041914 /* findGalleryButtonInactive.png */,
 				0CE1246C13CF8B3100041914 /* findGalleryButtonInactive@2x.png */,
 				0CE1246D13CF8B3300041914 /* findListButtonActive.png */,
+				69FF0A911BB3948E00FEFDCF /* forgotPasswordPageBG@2x.png */,
 				0CE1246E13CF8B3700041914 /* findListButtonActive@2x.png */,
 				0CE1246F13CF8B3900041914 /* findListButtonInactive.png */,
 				0CE1247013CF8B3D00041914 /* findListButtonInactive@2x.png */,
@@ -1928,7 +1929,6 @@
 				0C7B322B139FD25700477A74 /* forgotPasswordLink.png */,
 				0C7B322C139FD25B00477A74 /* forgotPasswordLink@2x.png */,
 				0C7B322D139FD25E00477A74 /* forgotPasswordPageBG.png */,
-				0C7B322E139FD26000477A74 /* forgotPasswordPageBG@2x.png */,
 				0C5A1FCC13E72ACE00DC1EB0 /* foundBanner.png */,
 				0C5A1FCD13E72ACE00DC1EB0 /* foundBanner@2x.png */,
 				0CE1242F13CF8A7900041914 /* foundImageMarker.png */,
@@ -2189,6 +2189,8 @@
 		0CCCB12C13690DA0001DF383 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				LastSwiftMigration = 0700;
+				LastSwiftUpdateCheck = 0700;
 				ORGANIZATIONNAME = LavaHound;
 				TargetAttributes = {
 					0CCCB13413690DA0001DF383 = {
@@ -2484,7 +2486,6 @@
 				0C7B3231139FD26400477A74 /* forgotPasswordLink.png in Resources */,
 				0C7B3232139FD26400477A74 /* forgotPasswordLink@2x.png in Resources */,
 				0C7B3233139FD26400477A74 /* forgotPasswordPageBG.png in Resources */,
-				0C7B3234139FD26400477A74 /* forgotPasswordPageBG@2x.png in Resources */,
 				0C7B3237139FF0CC00477A74 /* congratsBG.png in Resources */,
 				0C7B3238139FF0CC00477A74 /* congratsBG@2x.png in Resources */,
 				0C7B323B139FF93300477A74 /* buttonShare.png in Resources */,
@@ -2609,6 +2610,7 @@
 				D5B8013014F58E5D00F552E1 /* HuntMapInactv.png in Resources */,
 				D5B8013114F58E5D00F552E1 /* HuntMapInactv@2x.png in Resources */,
 				D5B8013214F58E5D00F552E1 /* HuntScoreActv.png in Resources */,
+				69FF0A921BB3948E00FEFDCF /* forgotPasswordPageBG@2x.png in Resources */,
 				D5B8013314F58E5D00F552E1 /* HuntScoreActv@2x.png in Resources */,
 				D5B8013414F58E5D00F552E1 /* HuntScoreInactv.png in Resources */,
 				D5B8013514F58E5D00F552E1 /* HuntScoreInactv@2x.png in Resources */,

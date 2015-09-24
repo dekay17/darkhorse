@@ -61,6 +61,8 @@
 
     [Fabric with:@[[Crashlytics class], [Twitter class]]];
 
+//    self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+
     
     // FOR TESTING ONLY!  Clear out the cache every launch
     [[TTURLCache sharedCache] removeAll:YES];
@@ -120,15 +122,52 @@
     [urlMap from:[Photo class] name:@"flag" toURL:@"lavahound://flag/(photoId)"];
     [urlMap from:[Place class] name:@"hunts" toURL:@"lavahound://hunts/(placeId)"];    
     
-    if([LocalStorage sharedInstance].apiToken)
-        [navigator openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://tab-bar"] applyAnimated:NO]];    
-    else    
-        [navigator openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://welcome"] applyAnimated:NO]];    
     
+//    NSArray *windows = [[UIApplication sharedApplication] windows];
+//    for(UIWindow *window in windows) {
+//        NSLog(@"window: %@",window.description);
+//        if(window.rootViewController == nil){
+//            UIViewController* vc = [[UIViewController alloc]initWithNibName:nil bundle:nil];
+//            window.rootViewController = vc;
+//        }
+//    }
+    UIViewController * rootViewController;// = [[UIViewController alloc] init];
+//    self.window.rootViewController = rootViewController;
+    NSLog(@"ApiToken %@", [LocalStorage sharedInstance].apiToken);
+        if([LocalStorage sharedInstance].apiToken){
+//            TabBarController *rootViewController = [[TabBarController alloc] init];
+//            TabBarController *rootViewController = [navigator viewControllerForURL:@"lavahound://welcome"];
+//            [ pushViewController:tabBarController animated:NO];
+            //[urlMap objectForURL:@"lavahound://tab-bar"];
+//            rootViewController = [navigator viewControllerForURL:@"lavahound://welcome"];
+//            self.window.rootViewController = [TTNavigationController ];
+
+//            rootViewController = [[UINavigationController alloc] initWithRootViewController:tabBarController];
+            [navigator openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://tab-bar"] applyAnimated:NO]];
+//            rootViewController.view.bounds = self.window.bounds;
+//            self.window.rootViewController = rootViewController;
+        }else{
+//            WelcomeController *welcomeController = [urlMap objectForURL:@"lavahound://welcome"];
+//            rootViewController = [navigator viewControllerForURL:@"lavahound://welcome"];
+//            self.window.rootViewController = welcomeController;
+//
+            [navigator openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://welcome"] applyAnimated:NO]];
+//            WelcomeController *welcomeController = [[WelcomeController alloc] init];
+//            rootViewController = [[UINavigationController alloc] initWithRootViewController:welcomeController];
+//            rootViewController.view.bounds = self.window.bounds;
+//            self.window.rootViewController = rootViewController;
+    }
 //    [[UINavigationBar appearance] setTintColor:[UIColor whiteColor]];
-    
-    CGRect frame = [[UIScreen mainScreen] bounds];
-    NSLog(@"Frame %@", NSStringFromCGRect(frame));
+//    self.window.backgroundColor = [UIColor blackColor];
+//    self.window.rootViewController = navigator;
+//    [self.window makeKeyAndVisible];
+    [navigator.window setRootViewController:[[UIViewController alloc] init]];
+    [navigator.window makeKeyAndVisible];
+
+//    CGRect frame = [[UIScreen mainScreen] bounds];
+//    NSLog(@"Frame %@", NSStringFromCGRect(frame));
+
+//    [self.window makeKeyAndVisible];
     
     return YES;
 }
