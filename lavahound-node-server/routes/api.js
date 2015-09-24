@@ -14,8 +14,9 @@ var fs = require('fs');
 var sha1 = require('sha1');
 var geolib = require('geolib');
 var bodyParser = require('body-parser');
+var randtoken = require('rand-token');
 
-var publicUrls = ["/sign-in", "/sign-up", "/twitter/sign-in", "/terms-and-conditions", "/privacy-policy"]
+var publicUrls = ["/sign-in", "/sign-up", "/twitter/sign-in","/users/reset", "/terms-and-conditions", "/privacy-policy"]
 
 var nodemailer = require("nodemailer");
 var sesTransport = require('nodemailer-ses-transport');
@@ -45,12 +46,11 @@ module.exports = function(app, express) {
         var router = express.Router();
         // middleware to use for all requests
         router.use(function(req, res, next) {
-            //console.log(req);
+            // console.log(req);
             // do logging
-            console.log(req.path);
+            console.log("Checking Token :", req.query.api_token, " for ", req.method ," to ",req.path);
 
             if (publicUrls.indexOf(req.path) < 0) {
-                console.log("Checking Token :", req.query.api_token);
 
                 pg.connect(connectionString, function(err, client, done) {
                     if (err) {
@@ -774,6 +774,61 @@ module.exports = function(app, express) {
                         }
                     });
                 });
+            });
+        });
+
+        router.get('/users/reset', function(req, res) {
+            var displayName = req.query.display_name;
+            var email = req.query.email_address;
+            var msgHtml = "<b>Welcome to Lavahound</b><br/>Please get started";
+            var msgText = "Reset Lavahound Password";
+
+            var password = randtoken.uid(8)
+            var hash = sha1(password);
+            console.log("sending email to ", email, password);
+            pg.connect(connectionString, function(err, client, done) {
+
+                var query = client.query("update account set password = $1 where lower(email) = $2", [hash, email.toLowerCase()]);
+                // console.log(query);
+                // Stream results back one row at a time
+                query.on('row', function(row) {
+                    initial_results = row;
+                });
+
+                // After all data is returned, close connection and return results
+                query.on('end', function() {
+                    console.log("updated password to", password);
+                    var mailOptions = {
+                        from: 'support@lavahound.com', // sender address
+                        to: [email], // list of receivers
+                        subject: 'Welcome to Lavahound', // Subject line
+                        text: msgText, // plaintext body
+                        html: msgHtml // html body
+                    };
+
+                    // // console.log(mailOptions);
+                    transporter.sendMail(mailOptions, function(error, info) {
+                        if (error) {
+                            console.log(error);
+                            return res.status(400).json({
+                                error: error
+                            });
+                        }
+                        console.log('Message sent: ' + info.response);
+                        return res.json({
+                            email: email,
+                            response: info.response
+                        });
+                    });  
+                });
+
+                // Handle Errors
+                if (err) {
+                    console.log(err);
+                    return res.status(400).json({
+                        "error_message": "Error loading hunt"
+                    });
+                }
             });
         });
 

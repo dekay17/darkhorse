@@ -9,6 +9,7 @@
 #import "MyStuffHomeController.h"
 #import "UIViewController+Lavahound.h"
 #import "LavahoundEmailer.h"
+#import "LocalStorage.h"
 
 @implementation MyStuffHomeController
 
@@ -153,7 +154,8 @@ static NSString * const CELL_IDENTIFIER_B   = @"CellIdentifierDark";
         else if (indexPath.row == 1)
         {
             [TheCell setAccessoryType:UITableViewCellAccessoryNone];
-            [TheCell .textLabel setText:@"Logout"];
+            NSString *buttonLabel = [LocalStorage sharedInstance].userName == nil ? @"Logout" : [NSString stringWithFormat:@"Logout %@", [LocalStorage sharedInstance].userName];
+            [TheCell .textLabel setText:buttonLabel];
         }
         
 //        if (indexPath.row == 0)
@@ -190,8 +192,8 @@ static NSString * const CELL_IDENTIFIER_B   = @"CellIdentifierDark";
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    ScoreboardController * MyPoints = nil;
-    AdminController * AdminView = nil;
+//    ScoreboardController * MyPoints = nil;
+//    AdminController * AdminView = nil;
 
     [tableView deselectRowAtIndexPath:indexPath animated:TRUE];
     

@@ -12,6 +12,7 @@
 
 static LocalStorage *kSharedInstance = nil;
 
+static NSString *const kUserNameTokenStorageKey = @"userName";
 static NSString *const kApiTokenStorageKey = @"apiToken";
 static NSString *const kFacebookOAuthTokenStorageKey = @"facebookOAuthToken";
 static NSString *const kTotalPointsStorageKey = @"totalPoints";
@@ -56,6 +57,14 @@ static CGFloat const kImageCompressionLevel = 0.8;  // compression is 0(most)..1
     id object = [userDefaults objectForKey:key];
     // TTDPRINT(@"Retrieved object '%@' for key '%@'.", object, key);    
     return object;
+}
+
+- (NSString *)userName {
+    return [self retrieveObjectForKey:kUserNameTokenStorageKey];
+}
+
+- (void)setUserName:(NSString *)userName {
+    [self storeObject:userName forKey:kUserNameTokenStorageKey];
 }
 
 - (NSString *)apiToken {

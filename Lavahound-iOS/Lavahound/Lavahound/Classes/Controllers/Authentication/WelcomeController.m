@@ -12,6 +12,7 @@
 #import "Lavahound-Swift.h"
 #import "LocalStorage.h"
 #import "Constants.h"
+#import "ModalOverlay.h"
 
 @interface WelcomeController(PrivateMethods)
 
@@ -64,14 +65,18 @@
 	signInButton.frame = CGRectMake(10, 238, signInButtonImage.size.width, signInButtonImage.size.height);
 	[self.view addSubview:signInButton];
     
+//
 //    TWTRLogInButton *logInButton = [TWTRLogInButton buttonWithType:UIButtonTypeCustom];
 //    [logInButton addTarget:self
 //                     action:@selector(didTouchUpInTwitterStartButton)
 //           forControlEvents:UIControlEventTouchUpInside];
 //    logInButton.frame = CGRectMake(10, 238, signInButtonImage.size.width, signInButtonImage.size.height);
-    
+//    [self.view addSubview:logInButton];
+
+// **** With Completion ***
     TWTRLogInButton *logInButton = [TWTRLogInButton buttonWithLogInCompletion:^(TWTRSession *session, NSError *error) {
 //         play with Twitter session
+        [[ModalOverlay sharedInstance] showWithMessage:@"Logging in with Twitter"];
         if (error == nil){
             NSMutableDictionary *params = [NSMutableDictionary dictionary];
             [params setObject:session.userName forKey:@"displayName"];
@@ -82,8 +87,10 @@
             NSString *endpoint = [NSString stringWithFormat:@"%@%@", [Constants sharedInstance].apiEndpointAbsoluteUrlPrefix, @"twitter/sign-in"];
             
             [API postToServer:endpoint parameters:params successBlock:^(NSString *apiToken, NSString *totalPoints) {
+                [LocalStorage sharedInstance].userName = session.userName;
                 [LocalStorage sharedInstance].apiToken = apiToken;
                 [LocalStorage sharedInstance].totalPoints = totalPoints;
+                [[ModalOverlay sharedInstance] hide];
                 dispatch_async(dispatch_get_main_queue(), ^{
                     [[TTURLCache sharedCache] removeAll:YES];
                     [[TTNavigator navigator] removeAllViewControllers];
@@ -91,17 +98,19 @@
                 });
             } failureBlock:^(NSError *postError) {
                 // Handle error
+                [[ModalOverlay sharedInstance] hide];
                 TTAlert(@"Error logging in with Twitter");
                 NSLog(@"error %@", postError);
             }];
             
         }else{
-            if (error.code )
+            if (error.code > 1){
                 TTAlert(error.description);
+            }
+            [[ModalOverlay sharedInstance] hide];
             NSLog(@"error %@", error);
         }
     }];
-//    [self.view addSubview:logInButton];
 
     logInButton.frame = CGRectMake(10, signInButton.bottom + 10, signInButtonImage.size.width, signInButtonImage.size.height);
     [self.view addSubview:logInButton];
@@ -164,11 +173,11 @@
 #pragma mark -
 #pragma mark LavahoundFacebookDelegate
 
-- (void)lavahoundFacebook:(LavahoundFacebook *)lavahoundFacebook didObtainFacebookOAuthToken:(NSString *)facebookOAuthToken {
-    LavahoundSignInApi *lavahoundSignInApi = [[[LavahoundSignInApi alloc] init] autorelease];
-    lavahoundSignInApi.delegate = self;
-    [lavahoundSignInApi signInWithFacebookOAuthToken:facebookOAuthToken];
-}
+//- (void)lavahoundFacebook:(LavahoundFacebook *)lavahoundFacebook didObtainFacebookOAuthToken:(NSString *)facebookOAuthToken {
+//    LavahoundSignInApi *lavahoundSignInApi = [[[LavahoundSignInApi alloc] init] autorelease];
+//    lavahoundSignInApi.delegate = self;
+//    [lavahoundSignInApi signInWithFacebookOAuthToken:facebookOAuthToken];
+//}
 
 #pragma mark -
 #pragma mark WelcomeController
@@ -180,6 +189,7 @@
 }
 
 //- (void)didTouchUpInTwitterStartButton {
+//    [[ModalOverlay sharedInstance] showWithMessage:@"Logging in with Twitter"];
 //    [[Twitter sharedInstance] logInWithCompletion:^(TWTRSession *session, NSError *error) {
 //        if (error == nil){
 //            NSMutableDictionary *params = [NSMutableDictionary dictionary];
@@ -193,6 +203,7 @@
 //            [API postToServer:endpoint parameters:params successBlock:^(NSString *apiToken, NSString *totalPoints) {
 //                [LocalStorage sharedInstance].apiToken = apiToken;
 //                [LocalStorage sharedInstance].totalPoints = totalPoints;
+//                [[ModalOverlay sharedInstance] hide];
 //                dispatch_async(dispatch_get_main_queue(), ^{
 //                    [[TTURLCache sharedCache] removeAll:YES];
 //                    [[TTNavigator navigator] removeAllViewControllers];
@@ -200,13 +211,14 @@
 //                });
 //            } failureBlock:^(NSError *postError) {
 //                // Handle error
+//                [[ModalOverlay sharedInstance] hide];
 //                TTAlert(@"Error logging in with Twitter");
 //                NSLog(@"error %@", postError);
 //            }];
 //            
 //        }else{
 //            if (error.code )
-//            TTAlert(error.description);
+//                TTAlert(error.description);
 //            NSLog(@"error %@", error);
 //        }
 //    }];
@@ -215,7 +227,7 @@
 - (void)performPostSignInProcessing {
     [[TTURLCache sharedCache] removeAll:YES];
     [self dismissModalViewControllerAnimated:NO];
-    [[TTNavigator navigator] removeAllViewControllers]; 
+    [[TTNavigator navigator] removeAllViewControllers];
     [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://tab-bar"] applyAnimated:YES]];
 }
 

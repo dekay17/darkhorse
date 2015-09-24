@@ -43,7 +43,7 @@
     if(!emailAddress)
         emailAddress = @"";
     
-    [_lavahoundApi performRequestWithRelativeUrl:@"/users/reset" httpMethod:@"POST" parameters:[NSDictionary dictionaryWithObject:emailAddress forKey:@"email_address"]];        
+    [_lavahoundApi performRequestWithRelativeUrl:@"/users/reset" httpMethod:@"GET" parameters:[NSDictionary dictionaryWithObject:emailAddress forKey:@"email_address"]];        
 }
 
 @end

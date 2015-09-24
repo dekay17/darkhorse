@@ -13,6 +13,7 @@
 + (LocalStorage *)sharedInstance;
 
 // Stores to NSDefaults
+@property(nonatomic, copy) NSString *userName;
 @property(nonatomic, copy) NSString *apiToken;
 @property(nonatomic, copy) NSString *facebookOAuthToken;
 @property(nonatomic, copy) NSString *totalPoints;
