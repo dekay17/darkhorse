@@ -131,7 +131,10 @@
 //            window.rootViewController = vc;
 //        }
 //    }
-    UIViewController * rootViewController;// = [[UIViewController alloc] init];
+//    UIViewController * rootViewController;// = [[UIViewController alloc] init];
+    [navigator.window setRootViewController:[[UIViewController alloc] init]];
+    [navigator.window makeKeyAndVisible];
+
 //    self.window.rootViewController = rootViewController;
     NSLog(@"ApiToken %@", [LocalStorage sharedInstance].apiToken);
         if([LocalStorage sharedInstance].apiToken){
@@ -143,7 +146,10 @@
 //            self.window.rootViewController = [TTNavigationController ];
 
 //            rootViewController = [[UINavigationController alloc] initWithRootViewController:tabBarController];
-            [navigator openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://tab-bar"] applyAnimated:NO]];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [navigator openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://tab-bar"] applyAnimated:NO]];
+            });
+            
 //            rootViewController.view.bounds = self.window.bounds;
 //            self.window.rootViewController = rootViewController;
         }else{
@@ -158,11 +164,11 @@
 //            self.window.rootViewController = rootViewController;
     }
 //    [[UINavigationBar appearance] setTintColor:[UIColor whiteColor]];
-//    self.window.backgroundColor = [UIColor blackColor];
+//    navigator.window.backgroundColor = [UIColor grayColor];
 //    self.window.rootViewController = navigator;
 //    [self.window makeKeyAndVisible];
-    [navigator.window setRootViewController:[[UIViewController alloc] init]];
-    [navigator.window makeKeyAndVisible];
+//    [navigator.window setRootViewController:[[UIViewController alloc] init]];
+//    [navigator.window makeKeyAndVisible];
 
 //    CGRect frame = [[UIScreen mainScreen] bounds];
 //    NSLog(@"Frame %@", NSStringFromCGRect(frame));
