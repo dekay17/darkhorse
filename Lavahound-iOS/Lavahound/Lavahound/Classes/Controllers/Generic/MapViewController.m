@@ -115,7 +115,7 @@ static NSInteger const kDefaultZoomLevel = 14;
 - (void)didShowModel:(BOOL)firstTime {    
     id<ListableModel> model = (id<ListableModel>)self.model;
     
-    TTDPRINT(@"Map data updated. Showing %d annotations.", [model.items count]);    
+//    TTDPRINT(@"Map data updated. Showing %d annotations.", [model.items count]);    
     
     // Diff the current set of map pins with the new ones returned from the server.
     // We don't want to blow away and re-add any existing pins that are still visible since

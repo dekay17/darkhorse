@@ -142,7 +142,7 @@
 //                     forControlEvents:UIControlEventTouchUpInside];
 //	justStartPlayingButton.frame = CGRectMake(10, signUpButton.bottom + 10, justStartPlayingButtonImage.size.width, justStartPlayingButtonImage.size.height);
 //    justStartPlayingButton.hidden = YES;
-//	[self.view addSubview:justStartPlayingButton];    
+//	[self.view addSubview:justStartPlayingButton];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -225,10 +225,12 @@
 //}
 
 - (void)performPostSignInProcessing {
-    [[TTURLCache sharedCache] removeAll:YES];
-    [self dismissModalViewControllerAnimated:NO];
-    [[TTNavigator navigator] removeAllViewControllers];
-    [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://tab-bar"] applyAnimated:YES]];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self dismissViewControllerAnimated:NO completion:nil];
+        [[TTURLCache sharedCache] removeAll:YES];
+        [[TTNavigator navigator] removeAllViewControllers];
+        [[TTNavigator navigator] openURLAction:[[TTURLAction actionWithURLPath:@"lavahound://tab-bar"] applyAnimated:YES]];
+    });
 }
 
 //- (void)didTouchUpInSignInWithFacebookButton {
