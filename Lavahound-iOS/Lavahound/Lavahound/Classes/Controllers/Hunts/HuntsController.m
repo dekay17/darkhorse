@@ -56,8 +56,11 @@
     _placeNameLabel.backgroundColor = [UIColor clearColor];
     _placeNameLabel.contentMode = UIViewContentModeCenter;
     [self.view addSubview:_placeNameLabel];
-    
-    self.tableView.frame = CGRectMake(self.tableView.left, self.tableView.top + 27, self.tableView.width, self.tableView.height - 50);
+    CGFloat heightDiff = 75;
+//    if (SYSTEM_VERSION_LESS_THAN(@"4.0")) {
+//        heightDiff = 75l
+//    }
+    self.tableView.frame = CGRectMake(self.tableView.left, self.tableView.top + 27, self.tableView.width, self.tableView.height - heightDiff);
 }
 
 - (void)viewDidUnload {
