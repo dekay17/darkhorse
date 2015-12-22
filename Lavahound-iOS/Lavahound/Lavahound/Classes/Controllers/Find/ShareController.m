@@ -11,6 +11,7 @@
 #import "LavahoundEmailer.h"
 #import "LavahoundFacebook.h"
 #import "UIViewController+Lavahound.h"
+#import <TwitterKit/TwitterKit.h>
 
 @implementation ShareController
 
@@ -65,6 +66,15 @@
           forControlEvents:UIControlEventTouchUpInside];
 	emailButton.frame = CGRectMake(((_modelView.width/2) - (emailButtonImage.size.width/2)), 243, emailButtonImage.size.width, emailButtonImage.size.height);
 	[_modelView addSubview:emailButton];
+
+        UIImage *twitterButtonImage = TTIMAGE(@"bundle://buttonTwitter.png");
+        UIButton *tweetButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    	[tweetButton setImage:twitterButtonImage forState:UIControlStateNormal];
+    	[tweetButton addTarget:self
+                           action:@selector(didTouchUpInTweetButton)
+                 forControlEvents:UIControlEventTouchUpInside];
+    	tweetButton.frame = CGRectMake(emailButton.right + 6, emailButton.top, twitterButtonImage.size.width, twitterButtonImage.size.height);
+    	[_modelView addSubview:tweetButton];
     
 //    UIImage *facebookButtonImage = TTIMAGE(@"bundle://buttonFacebook.png");         
 //    UIButton *facebookButton = [UIButton buttonWithType:UIButtonTypeCustom];  
@@ -107,6 +117,23 @@
     Photo *photo = ((PhotoDetailsModel *)self.model).photo;    
     [[LavahoundFacebook sharedInstance] postPhotoToFeed:photo];
 }
+- (void)didTouchUpInTweetButton {
+    TWTRComposer *composer = [[TWTRComposer alloc] init];
+    
+    [composer setText:@"just setting up my Fabric"];
+    [composer setImage:[UIImage imageNamed:@"fabric"]];
+    
+    // Called from a UIViewController
+    [composer showFromViewController:self completion:^(TWTRComposerResult result) {
+        if (result == TWTRComposerResultCancelled) {
+            NSLog(@"Tweet composition cancelled");
+        }
+        else {
+            NSLog(@"Sending Tweet!");
+        }
+    }];
+}
+
 
 - (void)didTouchUpInDoneButton {
     // In 1.1, we don't do this anymore

@@ -321,6 +321,8 @@
 		6983E4DC138D6F2C00C211C1 /* pointsBG@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6983E4DA138D6F2C00C211C1 /* pointsBG@2x.png */; };
 		6983E4E2138DDCE300C211C1 /* settingsButton@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6983E4E1138DDCE300C211C1 /* settingsButton@2x.png */; };
 		6983E4E4138DDD5D00C211C1 /* settingsButton.png in Resources */ = {isa = PBXBuildFile; fileRef = 6983E4E3138DDD5D00C211C1 /* settingsButton.png */; };
+		6986C7801C29B2130045F56B /* buttonTwitter.png in Resources */ = {isa = PBXBuildFile; fileRef = 6986C77E1C29B2130045F56B /* buttonTwitter.png */; };
+		6986C7811C29B2130045F56B /* buttonTwitter@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6986C77F1C29B2130045F56B /* buttonTwitter@2x.png */; };
 		699B42991AF70276000DE0E5 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 699B42981AF70276000DE0E5 /* Images.xcassets */; };
 		699B42A21AF702A1000DE0E5 /* Default@2x-586.png in Resources */ = {isa = PBXBuildFile; fileRef = 699B42A11AF702A1000DE0E5 /* Default@2x-586.png */; };
 		699D1E27139941EF008DD15A /* buttonCameraIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = 699D1E25139941EF008DD15A /* buttonCameraIcon.png */; };
@@ -380,7 +382,7 @@
 		69FC276E1B8804160046BE3D /* spotlightIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FC276A1B8804160046BE3D /* spotlightIcon.png */; };
 		69FC276F1B8804160046BE3D /* spotlightIcon@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FC276B1B8804160046BE3D /* spotlightIcon@2x.png */; };
 		69FC27731B8805760046BE3D /* icon-120.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FC27721B8805760046BE3D /* icon-120.png */; };
-		69FF0A921BB3948E00FEFDCF /* forgotPasswordPageBG@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FF0A911BB3948E00FEFDCF /* forgotPasswordPageBG@2x.png */; settings = {ASSET_TAGS = (); }; };
+		69FF0A921BB3948E00FEFDCF /* forgotPasswordPageBG@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 69FF0A911BB3948E00FEFDCF /* forgotPasswordPageBG@2x.png */; };
 		D502145E14FD286D003581DA /* AdminController.m in Sources */ = {isa = PBXBuildFile; fileRef = D502145D14FD286D003581DA /* AdminController.m */; };
 		D502146014FD31CA003581DA /* Admin.xib in Resources */ = {isa = PBXBuildFile; fileRef = D502145F14FD31CA003581DA /* Admin.xib */; };
 		D55599ED151A468D0063F4D8 /* SignUp.xib in Resources */ = {isa = PBXBuildFile; fileRef = D55599EC151A468D0063F4D8 /* SignUp.xib */; };
@@ -1035,6 +1037,8 @@
 		6983E4DA138D6F2C00C211C1 /* pointsBG@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "pointsBG@2x.png"; sourceTree = "<group>"; };
 		6983E4E1138DDCE300C211C1 /* settingsButton@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "settingsButton@2x.png"; sourceTree = "<group>"; };
 		6983E4E3138DDD5D00C211C1 /* settingsButton.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = settingsButton.png; sourceTree = "<group>"; };
+		6986C77E1C29B2130045F56B /* buttonTwitter.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = buttonTwitter.png; sourceTree = "<group>"; };
+		6986C77F1C29B2130045F56B /* buttonTwitter@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "buttonTwitter@2x.png"; sourceTree = "<group>"; };
 		699B42981AF70276000DE0E5 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		699B42A11AF702A1000DE0E5 /* Default@2x-586.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default@2x-586.png"; sourceTree = "<group>"; };
 		699D1E25139941EF008DD15A /* buttonCameraIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = buttonCameraIcon.png; sourceTree = "<group>"; };
@@ -1827,6 +1831,8 @@
 				0C7B3241139FFECD00477A74 /* buttonEmail.png */,
 				0C7B3242139FFED100477A74 /* buttonEmail@2x.png */,
 				0C7B3243139FFED400477A74 /* buttonFacebook.png */,
+				6986C77E1C29B2130045F56B /* buttonTwitter.png */,
+				6986C77F1C29B2130045F56B /* buttonTwitter@2x.png */,
 				0C7B3244139FFED700477A74 /* buttonFacebook@2x.png */,
 				0C7B31E7139EA7F300477A74 /* buttonFlagImage.png */,
 				0C7B31E8139EA7F400477A74 /* buttonFlagImage@2x.png */,
@@ -2376,6 +2382,7 @@
 				0CD305A51386ACAA00C0C8C0 /* navigationBarBackground.png in Resources */,
 				0CD305A61386ACAA00C0C8C0 /* navigationBarBackground@2x.png in Resources */,
 				0CF0A57513881E000004FC27 /* galleryBG.png in Resources */,
+				6986C7811C29B2130045F56B /* buttonTwitter@2x.png in Resources */,
 				0CF0A57613881E000004FC27 /* galleryBG@2x.png in Resources */,
 				0CF0A5791388205F0004FC27 /* buttonLocate.png in Resources */,
 				0CF0A57A1388205F0004FC27 /* buttonLocate@2x.png in Resources */,
@@ -2486,6 +2493,7 @@
 				0C7B3231139FD26400477A74 /* forgotPasswordLink.png in Resources */,
 				0C7B3232139FD26400477A74 /* forgotPasswordLink@2x.png in Resources */,
 				0C7B3233139FD26400477A74 /* forgotPasswordPageBG.png in Resources */,
+				6986C7801C29B2130045F56B /* buttonTwitter.png in Resources */,
 				0C7B3237139FF0CC00477A74 /* congratsBG.png in Resources */,
 				0C7B3238139FF0CC00477A74 /* congratsBG@2x.png in Resources */,
 				0C7B323B139FF93300477A74 /* buttonShare.png in Resources */,
