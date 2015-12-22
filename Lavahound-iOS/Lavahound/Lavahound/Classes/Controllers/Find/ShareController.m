@@ -64,7 +64,8 @@
 	[emailButton addTarget:self
                     action:@selector(didTouchUpInEmailButton)
           forControlEvents:UIControlEventTouchUpInside];
-	emailButton.frame = CGRectMake(((_modelView.width/2) - (emailButtonImage.size.width/2)), 243, emailButtonImage.size.width, emailButtonImage.size.height);
+//	emailButton.frame = CGRectMake(((_modelView.width/2) - (emailButtonImage.size.width/2)), 243, emailButtonImage.size.width, emailButtonImage.size.height);
+    	emailButton.frame = CGRectMake(((_modelView.width/2) - (emailButtonImage.size.width +3)), 243, emailButtonImage.size.width, emailButtonImage.size.height);
 	[_modelView addSubview:emailButton];
 
         UIImage *twitterButtonImage = TTIMAGE(@"bundle://buttonTwitter.png");
