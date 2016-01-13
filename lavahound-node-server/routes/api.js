@@ -274,19 +274,27 @@ module.exports = function(app, express) {
             pg.connect(connectionString, function(err, client, done) {
 
                 // SQL Query > Select Data
-                var query = null
+                var queryText = null
                 if (req.query.lat) {
-                    var query = client.query("select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude, count(hunt_id) hunt_count, " +
+                    queryText = "select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude, count(hunt_id) hunt_count, " +
                         "round((point(p.longitude, p.latitude) <@> point(" + req.query.lng + "," + req.query.lat + "))::numeric, 2) as miles " +
-                        "from place p, hunt h where h.active = true and p.place_id = h.place_id group by p.place_id, p.name,p.description, p.image_file_name,p.latitude,p.longitude, miles  " +
-                        "order by round((point(p.longitude, p.latitude) <@> point(" + req.query.lng + "," + req.query.lat + "))::numeric, 3)");
+                        "from place p, hunt h " +
+                        "where h.active = true and p.place_id = h.place_id group by p.place_id, p.name,p.description, p.image_file_name,p.latitude,p.longitude, miles  "
+
+                    if (adminIds.indexOf(parseInt(req.account_id)) == -1) {
+                        queryText += " and p.active = true "
+                    }
+                    queryText += "order by round((point(p.longitude, p.latitude) <@> point(" + req.query.lng + "," + req.query.lat + "))::numeric, 3)"
                 } else {
-                    var query = client.query("select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude, count(hunt_id) hunt_count from place p, hunt h " +
-                        "where p.place_id = h.place_id and p.longitude <= " + req.query.ne_lng + " and p.longitude >= " + req.query.sw_lng + " and p.latitude <= " + req.query.ne_lat + " and p.latitude >= " + req.query.sw_lat +
-                        " group by p.place_id, p.name,p.description, p.image_file_name,p.latitude,p.longitude")
+                    queryText = "select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude, count(hunt_id) hunt_count from place p, hunt h " +
+                        "where p.place_id = h.place_id and p.longitude <= " + req.query.ne_lng + " and p.longitude >= " + req.query.sw_lng + " and p.latitude <= " + req.query.ne_lat + " and p.latitude >= " + req.query.sw_lat
+                        if (adminIds.indexOf(parseInt(req.account_id)) == -1) {
+                            queryText += " and p.active = true "
+                        }
+                    queryText += " group by p.place_id, p.name,p.description, p.image_file_name,p.latitude,p.longitude"
                 }
-
-
+                console.log(queryText);
+                var query = client.query(queryText);
                 console.log(query);
                 // Stream results back one row at a time
                 query.on('row', function(row) {
