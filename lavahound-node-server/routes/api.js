@@ -631,10 +631,10 @@ module.exports = function(app, express) {
                     var queries = [foundQuery, totalPointsQuery];
 
                     var distanceCheckEnabled = true;
-                    if (adminIds.indexOf(parseInt(req.account_id)) > -1) {
-                        queries = [totalPointsQuery];
-                        distanceCheckEnabled = false;
-                    }
+                    // if (adminIds.indexOf(parseInt(req.account_id)) > -1) {
+                    //     queries = [totalPointsQuery];
+                    //     distanceCheckEnabled = false;
+                    // }
 
                     console.log("checking : ", initial_results.latitude, initial_results.longitude);
                     console.log("checking : ", req.query.lat, req.query.lng);
