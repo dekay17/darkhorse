@@ -54,12 +54,10 @@
 - (void)markFoundWithPhotoId:(NSNumber *)photoId {    
     CLLocation *location = [LocationTracker sharedInstance].location;   
 
-    
-    // UNCOMMENT
-//    if(!location) {
-//        TTAlert(@"Sorry, you must enable location services to mark a photo as found.");
-//        return;
-//    } 
+    if(!location) {
+        TTAlert(@"Sorry, you must enable location services to mark a photo as found.");
+        return;
+    } 
     
     NSDictionary *parameters = [NSDictionary dictionaryWithObjectsAndKeys:
                                 [LocalStorage sharedInstance].apiToken, @"api_token",
