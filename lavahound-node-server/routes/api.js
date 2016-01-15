@@ -461,6 +461,7 @@ module.exports = function(app, express) {
                     var center = geolib.getCenter(photoLocations);
                     results.latitude = center.latitude;
                     results.longitude = center.longitude;
+                    done();
                     return res.json(results);
                 });
 
@@ -495,7 +496,8 @@ module.exports = function(app, express) {
 
                 // After all data is returned, close connection and return results
                 query.on('end', function() {
-                    client.end();
+                    // client.end();
+                    done();
                     return res.json(results);
                 });
 
@@ -581,7 +583,8 @@ module.exports = function(app, express) {
 
                 // After all data is returned, close connection and return results
                 query.on('end', function() {
-                    client.end();
+                    // client.end();
+                    done();
                     return res.json(results);
                 });
 
@@ -655,7 +658,7 @@ module.exports = function(app, express) {
                                     "error": err,
                                     "error_message": "error loading data"
                                 });
-                            client.end();
+                            // client.end();
                             var resultsLength = results.length;
                             var points = results[resultsLength - 1].total_points == null ? "0" : results[resultsLength - 1].total_points.toString();
 				console.log("points", points);
@@ -764,7 +767,7 @@ module.exports = function(app, express) {
                         return res.status(400).json({
                             "error_message": "error loading data"
                         });
-                    client.end();
+                    // client.end();
                     var user_rank = results[0].user_rank ? results[0].user_rank : results[1].total;
                     var percent = (user_rank / results[1].total);
                     var rank_percentile = Math.round(percent * 100);
@@ -809,6 +812,7 @@ module.exports = function(app, express) {
                 // After all data is returned, close connection and return results
                 query.on('end', function() {
                     // console.log("updated password to", password);
+                    done();
                     var mailOptions = {
                         from: 'support@lavahound.com', // sender address
                         to: [email], // list of receivers
