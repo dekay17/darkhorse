@@ -40,7 +40,7 @@ var LAVAHOUND_ACCOUNT = 1000;
 
 var TWITTER_ACCOUNT = 1001;
 
-var adminIds = [1, 1003, 1010];
+var adminIds = [1, 1003, 1010, 1059];
 module.exports = function(app, express) {
         app.use(bodyParser.json());
 
@@ -441,9 +441,9 @@ module.exports = function(app, express) {
                     else
                         row.proximity_description = "who knows!";
 
-                    if (adminIds.indexOf(parseInt(req.account_id)) > -1) {
-                        row.found = false;
-                    }
+//                    if (adminIds.indexOf(parseInt(req.account_id)) > -1) {
+//                        row.found = false;
+//                    }
                     if (row.latitude != 0 && row.longitude != 0){
                         photoLocations.push({
                             latitude: row.latitude,
@@ -457,7 +457,7 @@ module.exports = function(app, express) {
 
                 // After all data is returned, close connection and return results
                 query.on('end', function() {
-                    client.end();
+                    //client.end();
                     var center = geolib.getCenter(photoLocations);
                     results.latitude = center.latitude;
                     results.longitude = center.longitude;
@@ -573,9 +573,9 @@ module.exports = function(app, express) {
                     row.submitted_by_image_url = user_icon_base + row.submitter + ".jpg";
                     row.submitted_by = row.submitter;
                     row.shot_information = row.description;
-                    if (adminIds.indexOf(parseInt(req.account_id)) > -1) {
-                        row.found = false;
-                    }
+//                    if (adminIds.indexOf(parseInt(req.account_id)) > -1) {
+//                        row.found = false;
+//                    }
                     results = row;
                 });
 
