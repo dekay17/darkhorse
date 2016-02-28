@@ -34,7 +34,7 @@ var transporter = nodemailer.createTransport(sesTransport({
     rateLimit: 5
 }));
 
-var FIND_DISTANCE = 15;
+var FIND_DISTANCE = 25;
 
 var LAVAHOUND_ACCOUNT = 1000;
 
@@ -651,7 +651,9 @@ module.exports = function(app, express) {
                         longitude: req.query.lng
                     });
 
-                    if (!distanceCheckEnabled || (meters < FIND_DISTANCE)) {
+		    console.log("distance:", meters);
+
+                    if (!distanceCheckEnabled || (meters <= FIND_DISTANCE)) {
                         async.series(queries, function(err, results) {
                             if (err)
                                 return res.status(400).json({
