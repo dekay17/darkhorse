@@ -3,7 +3,7 @@
 // =============================================================================
 
 // call the packages we need
-var express    = require('express');        // call express
+var express  = require('express');        // call express
 
 var exphbs  = require('express-handlebars');
 var path = require('path');
@@ -33,12 +33,13 @@ var port = process.env.PORT || 3001;        // set our port
 // Load routes
 var api = require('./routes/api')(app, express);
 var web = require('./routes/index');
+// var portal = require('./routes/portal');
 
 // REGISTER OUR ROUTES -------------------------------
 app.use('/', web);
 // all of our routes will be prefixed with /api
 app.use('/api', api);
-
+// app.use('/portal', portal);
 // START THE SERVER
 // =============================================================================
 app.listen(port);
