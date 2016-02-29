@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="lavahoundApp">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lavahound - Portal</title>
+
+    <link rel="stylesheet" type="text/css" href="/css/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" type="text/css" href="/css/font-awesome/css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="/css/local.css" />
+
+
+    <script type="text/javascript" src="/js/vendor/jquery/jquery-1.11.1.js"></script>
+    <script type="text/javascript" src="/css/bootstrap/js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="/js/vendor/angular/angular.js"></script>
+	<script type="text/javascript" src="/js/vendor/angular/angular-sanitize.js"></script>
+	<script type="text/javascript" src="/js/vendor/angular/angular-cookies.js"></script>
+	<script type="text/javascript" src="/js/vendor/angular/angular-route.js"></script>
+	<script type="text/javascript" src="/js/vendor/angular/ng-table.js"></script>
+	<script type="text/javascript" src="/js/vendor/angular/ng-csv.js"></script>
+	<script type="text/javascript" src="/js/vendor/underscore/underscore.js"></script>
+	<script type="text/javascript" src="/js/vendor/d3/d3.js"></script>
+	<script type="text/javascript" src="/js/vendor/nvd3/nv.d3.js"></script>
+	<script type="text/javascript" src="/js/vendor/nvd3/moment.js"></script>
+	<script type="text/javascript" src="/js/vendor/nvd3/angularjs-nvd3-directives.js"></script>
+	<script type="text/javascript" src="/js/vendor/ui-bootstrap/ui-bootstrap-tpls-0.11.2.js"></script>
+	<script type="text/javascript" src="/js/vendor/lodash/lodash.js"></script>
+	<script type="text/javascript" src="/js/vendor/angular-google-maps/angular-google-maps.js"></script>
+	<script type="text/javascript" src="/js/vendor/angular/angular-animate.js"></script>
+	<script type="text/javascript" src="/js/application.js"></script>
+
+
+	<script type="text/javascript" src="/js/modules/standard.js"></script>
+	<script type="text/javascript" src="/js/services/network.js"></script>
+	<script type="text/javascript" src="/js/services/account.js"></script>
+	<script type="text/javascript" src="/js/controllers/app.js"></script>
+    <script type="text/javascript" src="/js/controllers/sign-in.js"></script>
+</head>
+<body ng-controller="ApplicationController">
+    <div>
+        <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+            <div class="navbar-header">
+            	<h3 style="padding-left:20px; color: white">Lavahound Portal</h3>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" ng-controller="SignInController">
+        	<div class="row">
+	        	<div class="col-lg-3"></div>
+	    		<div class="col-lg-6">
+		       		<div class="panel panel-default ">
+		       			<div class="panel-heading">
+						    <h3 class="panel-title">Sign-in</h3>
+						 </div>
+						 <div class="panel-body">
+							<div errors style="display: none; color: red;"></div>
+
+				           	<form>
+							  <div class="form-group">
+							    <label for="exampleInputEmail1">Email address</label>
+							    <input type="text" class="form-control" id="exampleInputEmail1" placeholder="Email" ng-model="email">
+							  </div>
+							  <div class="form-group">
+							    <label for="exampleInputPassword1">Password</label>
+							    <input type="password" class="form-control" id="exampleInputPassword1" placeholder="Password" ng-model="password">
+							  </div>
+							  <div class="checkbox">
+							    <label> Remember Me: <input  type="checkbox" ng-model="rememberMe.value"/></label>
+							  </div>
+								<a class="btn large green" ng-click="onSignIn()" ng-disabled="busySigningIn">{{signInButtonTitle}}</a>
+							</form>
+						</div>
+		        	</div>
+    			</div>
+            	<div class="col-lg-3"></div>
+			</div>
+		</div>
+    </div>
+    <!-- /#wrapper -->
+
+    <script type="text/javascript">
+
+    </script>
+</body>
+</html>
