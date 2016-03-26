@@ -635,10 +635,10 @@ module.exports = function(app, express) {
                     var queries = [foundQuery, totalPointsQuery];
 
                     var distanceCheckEnabled = true;
-                    // if (adminIds.indexOf(parseInt(req.account_id)) > -1) {
-                    //     queries = [totalPointsQuery];
-                    //     distanceCheckEnabled = false;
-                    // }
+                    if (adminIds.indexOf(parseInt(req.account_id)) > -1) {
+                        queries = [totalPointsQuery];
+                        distanceCheckEnabled = false;
+                    }
 
                     console.log("checking : ", initial_results.latitude, initial_results.longitude);
                     console.log("checking : ", req.query.lat, req.query.lng);
@@ -651,7 +651,7 @@ module.exports = function(app, express) {
                         longitude: req.query.lng
                     });
 
-		    console.log("distance:", meters);
+		            console.log("distance:", meters);
 
                     if (!distanceCheckEnabled || (meters <= FIND_DISTANCE)) {
                         async.series(queries, function(err, results) {

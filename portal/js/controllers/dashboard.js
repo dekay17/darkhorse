@@ -5,6 +5,9 @@
 		$routeProvider.when('/home', {
 			templateUrl : '/js/partials/index.html',
 			controller : 'DashboardController'
+		}).when('/hunts', {
+			templateUrl : '/js/partials/hunts.html',
+			controller : 'DashboardController'
 		}).when('/account', {
 			templateUrl : '/js/partials/dashboard/program/dhi-list.html',
 			controller : 'DashboardController'
@@ -20,7 +23,8 @@
 		$scope.$on("$routeChangeSuccess", function($currentRoute, $previousRoute) {
 			$scope.breadcrumbs = [];
 			$scope.breadcrumbs.push({link:"/dashboard", name:"Dashboard"});
-		});		
+		});				
+
 	});
 
 	lavahound.app.controller("DashboardController", function($scope, $timeout, $http, $q, $log, $routeParams, $location, dashboardService, accountService) {

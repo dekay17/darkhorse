@@ -120,7 +120,11 @@ router.get('/hunts', function(req, res, next) {
     });
 });
 
-// lavahound test routes
+
+router.post('/sign-out', function(req, res) {
+
+});
+
 router.post('/sign-in', function(req, res) {
     var password = req.body.password;
     var email = req.body.emailAddress;

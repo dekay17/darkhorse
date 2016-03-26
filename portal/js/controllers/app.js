@@ -4,12 +4,16 @@
     lavahound.app.controller("ApplicationController", function($scope, $location, accountService) {
         $scope.isSignedIn = true;
         
+		$scope.$on("$routeChangeSuccess", function($currentRoute, $previousRoute) {
+			$scope.username = accountService.signedInUser();
+		});		        
+        
     	$scope.hasRole = function(role) {
     		return accountService.hasRole(role);    		
     	};
         
     	$scope.$on(lavahound.events.SIGNED_IN, function() { 
-    		console.log("Logged in");
+    		console.log("Logged in", accountService.getSignedInUser().name);
     		$scope.isSignedIn = true;
     		window.location = "/home";    	
     	});
