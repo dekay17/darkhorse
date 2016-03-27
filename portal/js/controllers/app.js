@@ -13,8 +13,8 @@
     	};
         
     	$scope.$on(lavahound.events.SIGNED_IN, function() { 
-    		console.log("Logged in", accountService.getSignedInUser().name);
     		$scope.isSignedIn = true;
+    		console.log("Logged in", accountService.getSignedInUser().name);
     		window.location = "/home";    	
     	});
 
@@ -24,6 +24,7 @@
     	});
     	
         $scope.signOut = function() {
+    		console.log("Sign out");
     		accountService.signOut();
     		window.location = "/sign-in";    			
     	};

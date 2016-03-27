@@ -22,19 +22,19 @@ window.lavahound.app.service("accountService", function($http, $cookies, network
 		});
 	};
 
-    this.hasRole = function(roleQuery) {
-        if(!signedInUserRoles && signedInUserRoles.length !== 0)
-            throw "SIGNED_IN_USER_ROLES is either empty or undefined.";
-
-        for(var r = 0; r < signedInUserRoles.length; r ++) {
-            var role = signedInUserRoles[r];
-
-            if(role === roleQuery)
-                return true;
-        }
-
-        return false;
-    };
+//    this.hasRole = function(roleQuery) {
+//        if(!signedInUserRoles && signedInUserRoles.length !== 0)
+//            throw "SIGNED_IN_USER_ROLES is either empty or undefined.";
+//
+//        for(var r = 0; r < signedInUserRoles.length; r ++) {
+//            var role = signedInUserRoles[r];
+//
+//            if(role === roleQuery)
+//                return true;
+//        }
+//
+//        return false;
+//    };
 
 	this.deauthenticate = function(params) {
 		params = params || {};
@@ -51,55 +51,7 @@ window.lavahound.app.service("accountService", function($http, $cookies, network
 			url : "/api/accounts"
 		});
 	};
-	
-	this.companyManagers = function() {
-		return readFromLocalStorage(COMPANY_MANAGERS);		
-	};
-	
-	this.loadManagers = function() {
-		networkService.makeCall({
-			method : "GET",
-			url : "/api/accounts/managers"
-		}).promise.then(function(response) {
-			writeToLocalStorage(COMPANY_MANAGERS, response.data.accounts);
-		}, function(reason) {
-			reject('Failed: ' + reason);
-		});
-	};
 
-	this.setCompanyUnits = function(units) {
-		writeToLocalStorage(COMPANY_UNITS, units);
-	};
-	
-	this.companyUnits = function() {
-		return readFromLocalStorage(COMPANY_UNITS);
-	};
-	
-	this.loadUnits = function(options) {
-		return networkService.makeCall({
-			method : "GET",
-			url : "/api/unit"
-		}, function(reason) {
-			reject('Failed: ' + reason);
-		});		
-	};
-	
-	this.companyLocations = function() {
-		return readFromLocalStorage(COMPANY_LOCATIONS);
-	};
-	
-	this.loadLocations = function(options) {
-		return networkService.makeCall({
-			method : "GET",
-			url : "/api/location"
-		}).promise.then(function(response) {
-			console.log("completed reading locations");
-			writeToLocalStorage(COMPANY_LOCATIONS, response.data.locations);
-		}, function(reason) {
-			reject('Failed: ' + reason);
-		});
-	};
-	
 	this.findAccount = function(params) {
 		params = params || {};
 		

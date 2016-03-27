@@ -17,20 +17,14 @@ window.lavahound.app.service("dashboardService", function($http, $q, $timeout, n
 		});
 	};
 
-	this.findRating = function(options) {
+	this.findPlaces = function(options) {
 		options = options || {};
 		var params = options.params || {};
 
-		var postData = {
-			companyId : params.companyId,
-			startDate : params.startDate,
-			endDate : params.endDate
-		};
-
 		return networkService.makeCall({
 			method : "GET",
-			url : "/api/dashboard/rating",
-			params : postData
+			url : "/api/places",
+			params : params
 		});
 	};
 	

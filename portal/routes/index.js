@@ -16,19 +16,24 @@ var publicUrls = ["/api/sign-in", "/sign-in", "/sign-up", "/terms-and-conditions
 
 
 router.use(function(req, res, next) {
-    console.log(req.cookies);
     // do logging
-    console.log("Checking Token :", req.cookies['X-API-Token'], " for ", req.method ," to ",req.path);
-
+    var token = req.cookies['X-API-Token']
+	//console.log("cookies", req.cookies);
+    if (token === 'undefined' || !token){
+    	token = req.headers['x-api-token']
+    }
+    console.log("checking Token :", token, " for ", req.method ," to ",req.path);
+    
     if (publicUrls.indexOf(req.path) < 0) {
         pg.connect(connectionString, function(err, client, done) {
             if (err) {
                 console.log(err);
                 return console.error('error fetching client from pool', err);
             }
-            client.query('SELECT account_id from account where remember_me_token = $1', [req.cookies['X-API-Token']], function(err, result) {
+            client.query('SELECT account_id from account where remember_me_token = $1', [token], function(err, result) {
                 done();
 
+                console.log("result:", result)
                 if (err) {                	
                     console.log(query, err);
                     return res.status(404).json({
@@ -37,9 +42,10 @@ router.use(function(req, res, next) {
                 }
 
                 if (result.rows.length != 1){
+                	console.log("error:", result.rows.length);
                     //console.log(query, result.rows.length);
                 	res.writeHead(301,
-  						{Location: '/sign-in'}
+  						{Location: '/xxxsign-in'}
 					);
 	                res.end();
                     // return res.status(403).json({
@@ -50,6 +56,7 @@ router.use(function(req, res, next) {
                     req.account_id = result.rows[0].account_id;
                 }
                 next();
+
             });
         });
     } else {
@@ -57,6 +64,11 @@ router.use(function(req, res, next) {
         console.log("Public URL");
         next();
     }
+});
+
+router.get('/', function(req, res, next) {
+    var fileContents = fs.readFileSync("views/index.html");
+    res.send(fileContents.toString());
 });
 
 /* GET home page. */

@@ -24,7 +24,7 @@ window.lavahound.app.controller("SignInController", function($scope, $element, $
 		});
 
 		authenticateApiCall.promise.then(function(response) {
-			console.log(response)
+			console.log("logging in", response)
 			accountService.signIn(response.data);
 			$scope.$emit(lavahound.events.SIGNED_IN);
 		}, function(response) {
@@ -48,7 +48,7 @@ window.lavahound.app.controller("SignInController", function($scope, $element, $
 
 	$scope.signInButtonTitle = DEFAULT_SIGN_IN_BUTTON_TITLE;
 	$scope.busySigningIn = false;
-	accountService.signOut();
+//	accountService.signOut();
 
 	
 	$($element).find("[username]").focus();

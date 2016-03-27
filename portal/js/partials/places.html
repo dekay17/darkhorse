@@ -1,0 +1,17 @@
+<div class="text-center">
+    <h1>Places</h1>
+</div>
+<div class="row">
+    <div class="col-md-4" ng-repeat="place in places">
+        <div class="well">
+            <a ng-href="/home#/places/{{ place.place_id}}">
+            	<img class="thumbnail img-responsive" alt="Bootstrap template" src="{{ place.image_url }}" />
+            </a>
+            <span>
+            	<h3>{{ place.name }} </h3>
+                {{ place.description }}
+            </span>
+        	<br/><b>{{ place.hunt_count }} hunts</b>
+        </div>
+    </div>
+</div>

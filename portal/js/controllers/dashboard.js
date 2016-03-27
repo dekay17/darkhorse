@@ -5,12 +5,15 @@
 		$routeProvider.when('/home', {
 			templateUrl : '/js/partials/index.html',
 			controller : 'DashboardController'
-		}).when('/hunts', {
-			templateUrl : '/js/partials/hunts.html',
-			controller : 'DashboardController'
+		}).when('/places', {
+			templateUrl : '/js/partials/places.html',
+			controller : 'DashboardPlacesController'
+		}).when('/places/:placeId', {
+			templateUrl : '/js/partials/places/place.html',
+			controller : 'DashboardPlaceController'				
 		}).when('/account', {
 			templateUrl : '/js/partials/dashboard/program/dhi-list.html',
-			controller : 'DashboardController'
+			controller : 'DashboardPlaceController'
 		}).when('/account/:programId', {
 			templateUrl : '/js/partials/dashboard/program/dhi.html',
 			controller : 'DashboardController'
@@ -32,53 +35,7 @@
 		$scope.users = 0;
 		$scope.hunts = 0;	
 		
-// 		$scope.dhiTimelineOptions = {
-// 				chart: {
-// 	                type: 'lineChart',
-// 	                height: 450,
-// 	                margin : {
-// 	                    top: 20,
-// 	                    right: 30,
-// 	                    bottom: 30,
-// 	                    left: 30
-// 	                },
-// 	                lines: {  
-// 		                interpolate: 'basis',   
-// 	                	size: function(){ 
-// 	                		return 5; 
-// 	                	}
-// 	                },
-// 	                x: function(d){ return d[0]; },
-// 	                y: function(d){ return d[1]; },
-// 	                forceY:[0,30],
-// //	                yScale: [0],
-// //	                average: function(d) { 
-// //	                	return _.reduce(d.values, function(memo, entry){ return memo + entry[1]; }, 0); 
-// //	                },
-// 	                color: d3.scale.category10().range(),
-// 	                transitionDuration: 300,
-// 	                useInteractiveGuideline: true,
-// 	                clipVoronoi: false,
 
-// 	                xAxis: {
-// 	                    //axisLabel: 'Date',
-// 	                    tickFormat: function(d) {
-// 	                        return d3.time.format('%m/%d/%y')(new Date(d));
-// 	                    },
-// 	                    staggerLabels: true
-// 	                },
-
-// 	                yAxis: {
-// 	                    //axisLabel: 'Views',
-// 	                    tickFormat: function(d){
-// 	                        return d;
-// 	                    }
-// 	                },
-// 	                noData: noDataMsg
-// 	            }
-// 		};
-		
-		
 		function loadDashboardSummary() {
 			var options = {
 				params : {
@@ -93,17 +50,31 @@
 			});
 		}
 		loadDashboardSummary();
-		
-		// $scope.showRiskFor = function($event, programId){
-		// 	$event.preventDefault();
-		// 	$event.stopPropagation();
-		// 	console.log( "/sessionsAtRisk/" + programId );
-		// 	$location.path( "/sessionsAtRisk/" + programId );
-		// };
-		
-		
+
 	});
 
+	lavahound.app.controller("DashboardPlacesController", function($scope, $timeout, $http, $q, $log, $routeParams, $location, dashboardService, accountService) {
+		
+		$scope.places = [];	
+		
+
+		function loadPlaces() {
+			var options = {
+				params : {
+					companyId : 1
+				}
+			};
+
+			dashboardService.findPlaces(options).promise.then(function(response) {
+				$scope.places = response.data.places;
+			});
+		}
+		loadPlaces();
+
+	});
+	
+	// ***** -------------------- CRAP BELOW HERE ------------------
+	
 	lavahound.app.controller("DashboardMaStatsController", [ "$scope", "$http", "$q", "$log", "$filter", "dashboardService", "accountService", "ngTableParams",
 			function($scope, $http, $q, $log, $filter, dashboardService, accountService, NgTableParams, $sce) {
 
