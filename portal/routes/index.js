@@ -19,7 +19,9 @@ router.use(function(req, res, next) {
     // do logging
     var token = req.cookies['X-API-Token']
 	//console.log("cookies", req.cookies);
+    console.log("checking token", token);
     if (token === 'undefined' || !token){
+        console.log("checking header");
     	token = req.headers['x-api-token']
     }
     console.log("checking Token :", token, " for ", req.method ," to ",req.path);

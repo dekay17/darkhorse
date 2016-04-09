@@ -179,7 +179,7 @@ router.post('/sign-in', function(req, res) {
 
         query.on('end', function() {
             done();
-            console.log('after', email, hash);
+            console.log('after', email, token);
             if (token != null)
                 return res.json({
                     api_token: token,
