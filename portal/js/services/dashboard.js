@@ -28,6 +28,17 @@ window.lavahound.app.service("dashboardService", function($http, $q, $timeout, n
 		});
 	};
 	
+	this.findPlaceDetails = function(options) {
+		options = options || {};
+		var params = options.params || {};
+
+		return networkService.makeCall({
+			method : "GET",
+			url : "/api/place/" + params.place_id,
+			params : params
+		});
+	};	
+	
 	this.loadSegmentData = function(params) {
 
 		var postData = {

@@ -107,6 +107,54 @@ router.get('/places', function(req, res, next) {
 });
 
 
+router.get('/place/:place_id', function(req, res, next) {
+    pg.connect(connectionString, function(err, client, done) {
+        var jsonResults = {};
+        jsonResults.hunts = [];
+        jsonResults.place = {};
+	
+        var placeQuery = function(callback){
+        	client.query("select * from hunt where place_id = " + req.params.place_id).on('row', function(row) {
+		        row.image_url = cloudfront_base + "sm_" + row.image_file_name;
+		        jsonResults.hunts.push(row);
+		    }).on('end', function(result) {
+                done();
+                if (err)
+                    return callback(err);
+                console.log("completed placeQuery");
+                callback(null, result);
+            });
+	    }
+
+
+	    // SQL Query > Select Data
+	    var huntQuery = function(callback) {
+	        client.query("select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude " +        
+	    	        "from place p where p.place_id = " + req.params.place_id,
+	            function(err, result) {
+	                done();
+	                if (err)
+	                    return callback(err);
+	                console.log("completed huntQuery");
+	                jsonResults.place = result.rows[0];
+	                callback(null, result);
+	            });
+	    }
+	
+	    async.parallel([
+	        placeQuery,
+	        huntQuery
+	    ], function(err, results) {
+	        if (err)
+	            return res.status(400).json({
+	                "error_message": "error loading data", 
+	                "error_description": err
+	            });
+	        return res.json(jsonResults);
+	    });	
+	});
+});
+
 router.post('/sign-out', function(req, res) {
 
 });

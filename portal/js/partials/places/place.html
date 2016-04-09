@@ -1,1 +1,25 @@
-a place and it's hunts
+<div class="container">
+    <span>
+    	<h3>{{ place.name }} </h3>
+        {{ place.description }}
+    </span>
+    <p/>
+    <div class="row" ng-repeat="hunt in hunts">
+        <div class="col-xs-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">{{ hunt.name }}</div>
+                <div class="panel-body">
+                	<div class="row">
+                		<div class="col-md-4"><img class="thumbnail img-responsive" alt="{{ hunt.name }}" src="{{ hunt.image_url }}" /></div>
+						<div class="col-md-8">
+							{{ hunt.description }}
+							<div class="text-center">
+								<button type="button" class="btn btn-primary" ng-click="viewHunt(hunt)"> View </button>
+							</div>
+						</div>
+					</div>
+                </div>
+           	</div>
+		</div>
+	</div>
+</div>

@@ -10,10 +10,10 @@
 			controller : 'DashboardPlacesController'
 		}).when('/places/:placeId', {
 			templateUrl : '/js/partials/places/place.html',
-			controller : 'DashboardPlaceController'				
-		}).when('/account', {
-			templateUrl : '/js/partials/dashboard/program/dhi-list.html',
-			controller : 'DashboardPlaceController'
+			controller : 'DashboardPlaceController'		
+		}).when('/hunt/:huntId', {
+			templateUrl : '/js/partials/places/hunt.html',
+			controller : 'DashboardHuntController'	
 		}).when('/account/:programId', {
 			templateUrl : '/js/partials/dashboard/program/dhi.html',
 			controller : 'DashboardController'
@@ -70,8 +70,43 @@
 			});
 		}
 		loadPlaces();
-
 	});
+	
+	lavahound.app.controller("DashboardPlaceController", function($scope, $timeout, $http, $q, $log, $routeParams, $location, dashboardService, accountService) {
+		
+		$scope.places = [];	
+	
+		$scope.viewHunt = function(hunt){
+			console.log("/hunt/" + hunt.hunt_id);
+			$location.path( "/hunt/" + hunt.hunt_id );
+		}		
+
+		function findPlaceDetails() {
+			var options = {
+				params : {
+					companyId : 1,
+					place_id : $routeParams.placeId
+				}
+			};
+
+			dashboardService.findPlaceDetails(options).promise.then(function(response) {
+				$scope.place = response.data.place;
+				$scope.hunts = response.data.hunts;
+				console.log(response);
+			});
+		}
+		findPlaceDetails();
+	});	
+
+	lavahound.app.controller("DashboardHuntController", function($scope, $timeout, $http, $q, $log, $routeParams, $location, dashboardService, accountService, uiGmapGoogleMapApi) {
+		uiGmapGoogleMapApi.then(function(maps) {
+
+    	});
+
+	});	
+
+	
+	
 	
 	// ***** -------------------- CRAP BELOW HERE ------------------
 	

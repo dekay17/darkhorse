@@ -43,7 +43,7 @@
     ]).config(function(uiGmapGoogleMapApiProvider) {
         uiGmapGoogleMapApiProvider.configure({
         	key: 'AIzaSyBMdkHOPs_501svWyksID8fs6gNykPb3Qs',
-            v: '3.17',
+            v: '3.20',
             libraries: 'weather,geometry,visualization'
         });
     });

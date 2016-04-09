@@ -1,4 +1,4 @@
-/*! angular-google-maps 2.0.12 2014-12-16
+/*! angular-google-maps 2.3.2 2016-02-11
  *  AngularJS directives for Google Maps
  *  git: https://github.com/angular-ui/angular-google-maps.git
  */
@@ -38,7 +38,7 @@ Nicholas McCready - https://twitter.com/nmccready
  */
 
 (function() {
-  angular.module('uiGmapgoogle-maps.providers', []);
+  angular.module('uiGmapgoogle-maps.providers', ['nemLogging']);
 
   angular.module('uiGmapgoogle-maps.wrapped', []);
 
@@ -58,47 +58,54 @@ Nicholas McCready - https://twitter.com/nmccready
 
   angular.module('uiGmapgoogle-maps.directives.api', ['uiGmapgoogle-maps.directives.api.models.parent']);
 
-  angular.module('uiGmapgoogle-maps', ['uiGmapgoogle-maps.directives.api', 'uiGmapgoogle-maps.providers']).factory('uiGmapdebounce', [
-    '$timeout', function($timeout) {
-      return function(fn) {
-        var nthCall;
-        nthCall = 0;
-        return function() {
-          var argz, later, that;
-          that = this;
-          argz = arguments;
-          nthCall++;
-          later = (function(version) {
-            return function() {
-              if (version === nthCall) {
-                return fn.apply(that, argz);
-              }
-            };
-          })(nthCall);
-          return $timeout(later, 0, true);
-        };
-      };
-    }
-  ]);
+  angular.module('uiGmapgoogle-maps', ['uiGmapgoogle-maps.directives.api', 'uiGmapgoogle-maps.providers']);
 
 }).call(this);
 ;(function() {
   angular.module('uiGmapgoogle-maps.providers').factory('uiGmapMapScriptLoader', [
     '$q', 'uiGmapuuid', function($q, uuid) {
-      var getScriptUrl, scriptId;
+      var getScriptUrl, includeScript, isGoogleMapsLoaded, scriptId, usedConfiguration;
       scriptId = void 0;
+      usedConfiguration = void 0;
       getScriptUrl = function(options) {
         if (options.china) {
           return 'http://maps.google.cn/maps/api/js?';
         } else {
-          return 'https://maps.googleapis.com/maps/api/js?';
+          if (options.transport === 'auto') {
+            return '//maps.googleapis.com/maps/api/js?';
+          } else {
+            return options.transport + '://maps.googleapis.com/maps/api/js?';
+          }
         }
+      };
+      includeScript = function(options) {
+        var omitOptions, query, script, scriptElem;
+        omitOptions = ['transport', 'isGoogleMapsForWork', 'china', 'preventLoad'];
+        if (options.isGoogleMapsForWork) {
+          omitOptions.push('key');
+        }
+        query = _.map(_.omit(options, omitOptions), function(v, k) {
+          return k + '=' + v;
+        });
+        if (scriptId) {
+          scriptElem = document.getElementById(scriptId);
+          scriptElem.parentNode.removeChild(scriptElem);
+        }
+        query = query.join('&');
+        script = document.createElement('script');
+        script.id = scriptId = "ui_gmap_map_load_" + (uuid.generate());
+        script.type = 'text/javascript';
+        script.src = getScriptUrl(options) + query;
+        return document.body.appendChild(script);
+      };
+      isGoogleMapsLoaded = function() {
+        return angular.isDefined(window.google) && angular.isDefined(window.google.maps);
       };
       return {
         load: function(options) {
-          var deferred, query, randomizedFunctionName, script;
+          var deferred, randomizedFunctionName;
           deferred = $q.defer();
-          if (angular.isDefined(window.google) && angular.isDefined(window.google.maps)) {
+          if (isGoogleMapsLoaded()) {
             deferred.resolve(window.google.maps);
             return deferred.promise;
           }
@@ -107,30 +114,41 @@ Nicholas McCready - https://twitter.com/nmccready
             window[randomizedFunctionName] = null;
             deferred.resolve(window.google.maps);
           };
-          query = _.map(options, function(v, k) {
-            return k + '=' + v;
-          });
-          if (scriptId) {
-            document.getElementById(scriptId).remove();
+          if (window.navigator.connection && window.Connection && window.navigator.connection.type === window.Connection.NONE && !options.preventLoad) {
+            document.addEventListener('online', function() {
+              if (!isGoogleMapsLoaded()) {
+                return includeScript(options);
+              }
+            });
+          } else if (!options.preventLoad) {
+            includeScript(options);
           }
-          query = query.join('&');
-          script = document.createElement('script');
-          scriptId = "ui_gmap_map_load_" + uuid.generate();
-          script.id = scriptId;
-          script.type = 'text/javascript';
-          script.src = getScriptUrl(options) + query;
-          document.body.appendChild(script);
+          usedConfiguration = options;
+          usedConfiguration.randomizedFunctionName = randomizedFunctionName;
           return deferred.promise;
+        },
+        manualLoad: function() {
+          var config;
+          config = usedConfiguration;
+          if (!isGoogleMapsLoaded()) {
+            return includeScript(config);
+          } else {
+            if (window[config.randomizedFunctionName]) {
+              return window[config.randomizedFunctionName]();
+            }
+          }
         }
       };
     }
   ]).provider('uiGmapGoogleMapApi', function() {
     this.options = {
+      transport: 'https',
+      isGoogleMapsForWork: false,
       china: false,
-      v: '3.17',
+      v: '3',
       libraries: '',
       language: 'en',
-      sensor: 'false'
+      preventLoad: false
     };
     this.configure = function(options) {
       angular.extend(this.options, options);
@@ -143,13 +161,26 @@ Nicholas McCready - https://twitter.com/nmccready
       })(this)
     ];
     return this;
-  });
+  }).service('uiGmapGoogleMapApiManualLoader', [
+    'uiGmapMapScriptLoader', function(loader) {
+      return {
+        load: function() {
+          loader.manualLoad();
+        }
+      };
+    }
+  ]);
 
 }).call(this);
 ;(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
+
   angular.module('uiGmapgoogle-maps.extensions').service('uiGmapExtendGWin', function() {
     return {
       init: _.once(function() {
+        var uiGmapInfoBox;
         if (!(google || (typeof google !== "undefined" && google !== null ? google.maps : void 0) || (google.maps.InfoWindow != null))) {
           return;
         }
@@ -207,9 +238,54 @@ Nicholas McCready - https://twitter.com/nmccready
               return this._isOpen = val;
             }
           };
+          uiGmapInfoBox = (function(superClass) {
+            extend(uiGmapInfoBox, superClass);
+
+            function uiGmapInfoBox(opts) {
+              this.getOrigCloseBoxImg_ = bind(this.getOrigCloseBoxImg_, this);
+              this.getCloseBoxDiv_ = bind(this.getCloseBoxDiv_, this);
+              var box;
+              box = new window.InfoBox(opts);
+              _.extend(this, box);
+              if (opts.closeBoxDiv != null) {
+                this.closeBoxDiv_ = opts.closeBoxDiv;
+              }
+            }
+
+            uiGmapInfoBox.prototype.getCloseBoxDiv_ = function() {
+              return this.closeBoxDiv_;
+            };
+
+            uiGmapInfoBox.prototype.getCloseBoxImg_ = function() {
+              var div, img;
+              div = this.getCloseBoxDiv_();
+              img = this.getOrigCloseBoxImg_();
+              return div || img;
+            };
+
+            uiGmapInfoBox.prototype.getOrigCloseBoxImg_ = function() {
+              var img;
+              img = "";
+              if (this.closeBoxURL_ !== "") {
+                img = "<img";
+                img += " src='" + this.closeBoxURL_ + "'";
+                img += " align=right";
+                img += " style='";
+                img += " position: relative;";
+                img += " cursor: pointer;";
+                img += " margin: " + this.closeBoxMargin_ + ";";
+                img += "'>";
+              }
+              return img;
+            };
+
+            return uiGmapInfoBox;
+
+          })(window.InfoBox);
+          window.uiGmapInfoBox = uiGmapInfoBox;
         }
         if (window.MarkerLabel_) {
-          window.MarkerLabel_.prototype.setContent = function() {
+          return window.MarkerLabel_.prototype.setContent = function() {
             var content;
             content = this.marker_.get('labelContent');
             if (!content || _.isEqual(this.oldContent, content)) {
@@ -223,33 +299,10 @@ Nicholas McCready - https://twitter.com/nmccready
               this.labelDiv_.innerHTML = '';
               this.labelDiv_.appendChild(content);
               content = content.cloneNode(true);
+              this.labelDiv_.innerHTML = '';
               this.eventDiv_.appendChild(content);
               this.oldContent = content;
             }
-          };
-
-          /*
-          Removes the DIV for the label from the DOM. It also removes all event handlers.
-          This method is called automatically when the marker's <code>setMap(null)</code>
-          method is called.
-          @private
-           */
-          return window.MarkerLabel_.prototype.onRemove = function() {
-            if (this.labelDiv_.parentNode != null) {
-              this.labelDiv_.parentNode.removeChild(this.labelDiv_);
-            }
-            if (this.eventDiv_.parentNode != null) {
-              this.eventDiv_.parentNode.removeChild(this.eventDiv_);
-            }
-            if (!this.listeners_) {
-              return;
-            }
-            if (!this.listeners_.length) {
-              return;
-            }
-            this.listeners_.forEach(function(l) {
-              return google.maps.event.removeListener(l);
-            });
           };
         }
       })
@@ -257,8 +310,182 @@ Nicholas McCready - https://twitter.com/nmccready
   });
 
 }).call(this);
-;(function() {
+;
+/*global _:true, angular:true */
+
+(function() {
   angular.module('uiGmapgoogle-maps.extensions').service('uiGmapLodash', function() {
+    var baseGet, baseToString, fixLodash, get, reEscapeChar, rePropName, toObject, toPath;
+    rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\n\\]|\\.)*?)\2)\]/g;
+    reEscapeChar = /\\(\\)?/g;
+
+    /*
+        For Lodash 4 compatibility (some aliases are removed)
+     */
+    fixLodash = function(arg) {
+      var isProto, missingName, swapName;
+      missingName = arg.missingName, swapName = arg.swapName, isProto = arg.isProto;
+      if (_[missingName] == null) {
+        _[missingName] = _[swapName];
+        if (isProto) {
+          return _.prototype[missingName] = _[swapName];
+        }
+      }
+    };
+    [
+      {
+        missingName: 'contains',
+        swapName: 'includes',
+        isProto: true
+      }, {
+        missingName: 'includes',
+        swapName: 'contains',
+        isProto: true
+      }, {
+        missingName: 'object',
+        swapName: 'zipObject'
+      }, {
+        missingName: 'zipObject',
+        swapName: 'object'
+      }, {
+        missingName: 'all',
+        swapName: 'every'
+      }, {
+        missingName: 'every',
+        swapName: 'all'
+      }, {
+        missingName: 'any',
+        swapName: 'some'
+      }, {
+        missingName: 'some',
+        swapName: 'any'
+      }, {
+        missingName: 'first',
+        swapName: 'head'
+      }, {
+        missingName: 'head',
+        swapName: 'first'
+      }
+    ].forEach(function(toMonkeyPatch) {
+      return fixLodash(toMonkeyPatch);
+    });
+    if (_.get == null) {
+
+      /**
+       * Converts `value` to an object if it's not one.
+       *
+       * @private
+       * @param {*} value The value to process.
+       * @returns {Object} Returns the object.
+       */
+      toObject = function(value) {
+        if (_.isObject(value)) {
+          return value;
+        } else {
+          return Object(value);
+        }
+      };
+
+      /**
+       * Converts `value` to a string if it's not one. An empty string is returned
+       * for `null` or `undefined` values.
+       *
+       * @private
+       * @param {*} value The value to process.
+       * @returns {string} Returns the string.
+       */
+      baseToString = function(value) {
+        if (value === null) {
+          return '';
+        } else {
+          return value + '';
+        }
+      };
+
+      /**
+       * Converts `value` to property path array if it's not one.
+       *
+       * @private
+       * @param {*} value The value to process.
+       * @returns {Array} Returns the property path array.
+       */
+      toPath = function(value) {
+        var result;
+        if (_.isArray(value)) {
+          return value;
+        }
+        result = [];
+        baseToString(value).replace(rePropName, function(match, number, quote, string) {
+          result.push(quote ? string.replace(reEscapeChar, '$1') : number || match);
+        });
+        return result;
+      };
+
+      /**
+       * The base implementation of `get` without support for string paths
+       * and default values.
+       *
+       * @private
+       * @param {Object} object The object to query.
+       * @param {Array} path The path of the property to get.
+       * @param {string} [pathKey] The key representation of path.
+       * @returns {*} Returns the resolved value.
+       */
+      baseGet = function(object, path, pathKey) {
+        var index, length;
+        if (object === null) {
+          return;
+        }
+        if (pathKey !== void 0 && pathKey in toObject(object)) {
+          path = [pathKey];
+        }
+        index = 0;
+        length = path.length;
+        while (!_.isUndefined(object) && index < length) {
+          object = object[path[index++]];
+        }
+        if (index && index === length) {
+          return object;
+        } else {
+          return void 0;
+        }
+      };
+
+      /**
+       * Gets the property value at `path` of `object`. If the resolved value is
+       * `undefined` the `defaultValue` is used in its place.
+       *
+       * @static
+       * @memberOf _
+       * @category Object
+       * @param {Object} object The object to query.
+       * @param {Array|string} path The path of the property to get.
+       * @param {*} [defaultValue] The value returned if the resolved value is `undefined`.
+       * @returns {*} Returns the resolved value.
+       * @example
+       *
+       * var object = { 'a': [{ 'b': { 'c': 3 } }] };
+       *
+       * _.get(object, 'a[0].b.c');
+       * // => 3
+       *
+       * _.get(object, ['a', '0', 'b', 'c']);
+       * // => 3
+       *
+       * _.get(object, 'a.b.c', 'default');
+       * // => 'default'
+       */
+      get = function(object, path, defaultValue) {
+        var result;
+        result = object === null ? void 0 : baseGet(object, toPath(path), path + '');
+        if (result === void 0) {
+          return defaultValue;
+        } else {
+          return result;
+        }
+      };
+      _.get = get;
+    }
 
     /*
         Author Nick McCready
@@ -270,17 +497,15 @@ Nicholas McCready - https://twitter.com/nmccready
       if (comparison == null) {
         comparison = void 0;
       }
-      res = _.map(array1, (function(_this) {
-        return function(obj1) {
-          return _.find(array2, function(obj2) {
-            if (comparison != null) {
-              return comparison(obj1, obj2);
-            } else {
-              return _.isEqual(obj1, obj2);
-            }
-          });
-        };
-      })(this));
+      res = _.map(array1, function(obj1) {
+        return _.find(array2, function(obj2) {
+          if (comparison != null) {
+            return comparison(obj1, obj2);
+          } else {
+            return _.isEqual(obj1, obj2);
+          }
+        });
+      });
       return _.filter(res, function(o) {
         return o != null;
       });
@@ -292,15 +517,13 @@ Nicholas McCready - https://twitter.com/nmccready
       if (obj === null) {
         return false;
       }
-      return _.any(obj, (function(_this) {
-        return function(value) {
-          if (comparison != null) {
-            return comparison(value, target);
-          } else {
-            return _.isEqual(value, target);
-          }
-        };
-      })(this));
+      return _.some(obj, function(value) {
+        if (comparison != null) {
+          return comparison(value, target);
+        } else {
+          return _.isEqual(value, target);
+        }
+      });
     };
     this.differenceObjects = function(array1, array2, comparison) {
       if (comparison == null) {
@@ -342,11 +565,6 @@ Nicholas McCready - https://twitter.com/nmccready
       }
       return -1;
     };
-    this["extends"] = function(arrayOfObjectsToCombine) {
-      return _.reduce(arrayOfObjectsToCombine, function(combined, toAdd) {
-        return _.extend(combined, toAdd);
-      }, {});
-    };
     this.isNullOrUndefined = function(thing) {
       return _.isNull(thing || _.isUndefined(thing));
     };
@@ -365,7 +583,10 @@ Nicholas McCready - https://twitter.com/nmccready
   });
 
 }).call(this);
-;(function() {
+;
+/*global _:true,angular:true, */
+
+(function() {
   angular.module('uiGmapgoogle-maps.directives.api.utils').service('uiGmap_sync', [
     function() {
       return {
@@ -385,7 +606,7 @@ Nicholas McCready - https://twitter.com/nmccready
     }
   ]).service('uiGmap_async', [
     '$timeout', 'uiGmapPromise', 'uiGmapLogger', '$q', 'uiGmapDataStructures', 'uiGmapGmapUtil', function($timeout, uiGmapPromise, $log, $q, uiGmapDataStructures, uiGmapGmapUtil) {
-      var ExposedPromise, PromiseQueueManager, SniffedPromise, defaultChunkSize, doChunk, doSkippPromise, each, errorObject, isInProgress, kickPromise, logTryCatch, managePromiseQueue, map, maybeCancelPromises, promiseStatus, promiseTypes, tryCatch;
+      var ExposedPromise, PromiseQueueManager, SniffedPromise, _getIterateeValue, _ignoreFields, defaultChunkSize, doChunk, doSkippPromise, each, errorObject, getArrayAndKeys, isInProgress, kickPromise, logTryCatch, managePromiseQueue, map, maybeCancelPromises, promiseStatus, promiseTypes, tryCatch;
       promiseTypes = uiGmapPromise.promiseTypes;
       isInProgress = uiGmapPromise.isInProgress;
       promiseStatus = uiGmapPromise.promiseStatus;
@@ -449,7 +670,7 @@ Nicholas McCready - https://twitter.com/nmccready
        - Promises have been broken down to 4 states create, update,delete (3 main) and init. (Helps boil down problems in ordering)
         where (init) is special to indicate that it is one of the first or to allow a create promise to work beyond being after a delete
       
-       - Every Promise that comes is is enqueue and linked to the last promise in the queue.
+       - Every Promise that comes in is enqueued and linked to the last promise in the queue.
       
        - A promise can be skipped or canceled to save cycles.
       
@@ -492,8 +713,10 @@ Nicholas McCready - https://twitter.com/nmccready
           msg = '';
         }
         cancelLogger = function(msg) {
-          $log.debug("" + msg + ": " + msg);
-          return cancelCb(msg);
+          $log.debug(msg + ": " + msg);
+          if ((cancelCb != null) && _.isFunction(cancelCb)) {
+            return cancelCb(msg);
+          }
         };
         return PromiseQueueManager(objectToLock, SniffedPromise(fnPromise, promiseType), cancelLogger);
       };
@@ -502,11 +725,11 @@ Nicholas McCready - https://twitter.com/nmccready
         value: null
       };
       tryCatch = function(fn, ctx, args) {
-        var e;
+        var e, error1;
         try {
           return fn.apply(ctx, args);
-        } catch (_error) {
-          e = _error;
+        } catch (error1) {
+          e = error1;
           errorObject.value = e;
           return errorObject;
         }
@@ -524,6 +747,43 @@ Nicholas McCready - https://twitter.com/nmccready
         }
         return true;
       };
+      _getIterateeValue = function(collection, array, index) {
+        var _isArray, valOrKey;
+        _isArray = collection === array;
+        valOrKey = array[index];
+        if (_isArray) {
+          return valOrKey;
+        }
+        return collection[valOrKey];
+      };
+      _ignoreFields = ['length', 'forEach', 'map'];
+      getArrayAndKeys = function(collection, keys, bailOutCb, cb) {
+        var array, propName, val;
+        if (angular.isArray(collection)) {
+          array = collection;
+        } else {
+          if (keys) {
+            array = keys;
+          } else {
+            array = [];
+            for (propName in collection) {
+              val = collection[propName];
+              if (collection.hasOwnProperty(propName) && !_.includes(_ignoreFields, propName)) {
+                array.push(propName);
+              }
+            }
+          }
+        }
+        if (cb == null) {
+          cb = bailOutCb;
+        }
+        if (angular.isArray(array) && !(array != null ? array.length : void 0)) {
+          if (cb !== bailOutCb) {
+            return bailOutCb();
+          }
+        }
+        return cb(array, keys);
+      };
 
       /*
         Author: Nicholas McCready & jfriend00
@@ -535,36 +795,39 @@ Nicholas McCready - https://twitter.com/nmccready
       
         Optional Asynchronous Chunking via promises.
        */
-      doChunk = function(array, chunkSizeOrDontChunk, pauseMilli, chunkCb, pauseCb, overallD, index) {
-        var cnt, i, keepGoing;
-        if (chunkSizeOrDontChunk && chunkSizeOrDontChunk < array.length) {
-          cnt = chunkSizeOrDontChunk;
-        } else {
-          cnt = array.length;
-        }
-        i = index;
-        keepGoing = true;
-        while (keepGoing && cnt-- && i < (array ? array.length : i + 1)) {
-          keepGoing = logTryCatch(chunkCb, void 0, overallD, [array[i], i]);
-          ++i;
-        }
-        if (array) {
-          if (keepGoing && i < array.length) {
-            index = i;
-            if (chunkSizeOrDontChunk) {
-              if ((pauseCb != null) && _.isFunction(pauseCb)) {
-                logTryCatch(pauseCb, void 0, overallD, []);
-              }
-              return $timeout(function() {
-                return doChunk(array, chunkSizeOrDontChunk, pauseMilli, chunkCb, pauseCb, overallD, index);
-              }, pauseMilli, false);
-            }
+      doChunk = function(collection, chunkSizeOrDontChunk, pauseMilli, chunkCb, pauseCb, overallD, index, _keys) {
+        return getArrayAndKeys(collection, _keys, function(array, keys) {
+          var cnt, i, keepGoing, val;
+          if (chunkSizeOrDontChunk && chunkSizeOrDontChunk < array.length) {
+            cnt = chunkSizeOrDontChunk;
           } else {
-            return overallD.resolve();
+            cnt = array.length;
           }
-        }
+          i = index;
+          keepGoing = true;
+          while (keepGoing && cnt-- && i < (array ? array.length : i + 1)) {
+            val = _getIterateeValue(collection, array, i);
+            keepGoing = angular.isFunction(val) ? true : logTryCatch(chunkCb, void 0, overallD, [val, i]);
+            ++i;
+          }
+          if (array) {
+            if (keepGoing && i < array.length) {
+              index = i;
+              if (chunkSizeOrDontChunk) {
+                if ((pauseCb != null) && _.isFunction(pauseCb)) {
+                  logTryCatch(pauseCb, void 0, overallD, []);
+                }
+                return $timeout(function() {
+                  return doChunk(collection, chunkSizeOrDontChunk, pauseMilli, chunkCb, pauseCb, overallD, index, keys);
+                }, pauseMilli, false);
+              }
+            } else {
+              return overallD.resolve();
+            }
+          }
+        });
       };
-      each = function(array, chunk, chunkSizeOrDontChunk, pauseCb, index, pauseMilli) {
+      each = function(collection, chunk, chunkSizeOrDontChunk, pauseCb, index, pauseMilli, _keys) {
         var error, overallD, ret;
         if (chunkSizeOrDontChunk == null) {
           chunkSizeOrDontChunk = defaultChunkSize;
@@ -584,23 +847,25 @@ Nicholas McCready - https://twitter.com/nmccready
           overallD.reject(error);
           return ret;
         }
-        if (array === void 0 || (array != null ? array.length : void 0) <= 0) {
+        return getArrayAndKeys(collection, _keys, function() {
           overallD.resolve();
           return ret;
-        }
-        doChunk(array, chunkSizeOrDontChunk, pauseMilli, chunk, pauseCb, overallD, index);
-        return ret;
+        }, function(array, keys) {
+          doChunk(collection, chunkSizeOrDontChunk, pauseMilli, chunk, pauseCb, overallD, index, keys);
+          return ret;
+        });
       };
-      map = function(objs, iterator, chunkSizeOrDontChunk, pauseCb, index, pauseMilli) {
+      map = function(collection, iterator, chunkSizeOrDontChunk, pauseCb, index, pauseMilli, _keys) {
         var results;
         results = [];
-        if (!((objs != null) && (objs != null ? objs.length : void 0) > 0)) {
+        return getArrayAndKeys(collection, _keys, function() {
           return uiGmapPromise.resolve(results);
-        }
-        return each(objs, function(o) {
-          return results.push(iterator(o));
-        }, chunkSizeOrDontChunk, pauseCb, index, pauseMilli).then(function() {
-          return results;
+        }, function(array, keys) {
+          return each(collection, function(o) {
+            return results.push(iterator(o));
+          }, chunkSizeOrDontChunk, pauseCb, index, pauseMilli, keys).then(function() {
+            return results;
+          });
         });
       };
       return {
@@ -609,9 +874,11 @@ Nicholas McCready - https://twitter.com/nmccready
         managePromiseQueue: managePromiseQueue,
         promiseLock: managePromiseQueue,
         defaultChunkSize: defaultChunkSize,
-        chunkSizeFrom: function(fromSize) {
-          var ret;
-          ret = void 0;
+        getArrayAndKeys: getArrayAndKeys,
+        chunkSizeFrom: function(fromSize, ret) {
+          if (ret == null) {
+            ret = void 0;
+          }
           if (_.isNumber(fromSize)) {
             ret = fromSize;
           }
@@ -626,7 +893,7 @@ Nicholas McCready - https://twitter.com/nmccready
 
 }).call(this);
 ;(function() {
-  var __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+  var indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   angular.module('uiGmapgoogle-maps.directives.api.utils').factory('uiGmapBaseObject', function() {
     var BaseObject, baseObjectKeywords;
@@ -635,29 +902,29 @@ Nicholas McCready - https://twitter.com/nmccready
       function BaseObject() {}
 
       BaseObject.extend = function(obj) {
-        var key, value, _ref;
+        var key, ref, value;
         for (key in obj) {
           value = obj[key];
-          if (__indexOf.call(baseObjectKeywords, key) < 0) {
+          if (indexOf.call(baseObjectKeywords, key) < 0) {
             this[key] = value;
           }
         }
-        if ((_ref = obj.extended) != null) {
-          _ref.apply(this);
+        if ((ref = obj.extended) != null) {
+          ref.apply(this);
         }
         return this;
       };
 
       BaseObject.include = function(obj) {
-        var key, value, _ref;
+        var key, ref, value;
         for (key in obj) {
           value = obj[key];
-          if (__indexOf.call(baseObjectKeywords, key) < 0) {
+          if (indexOf.call(baseObjectKeywords, key) < 0) {
             this.prototype[key] = value;
           }
         }
-        if ((_ref = obj.included) != null) {
-          _ref.apply(this);
+        if ((ref = obj.included) != null) {
+          ref.apply(this);
         }
         return this;
       };
@@ -717,15 +984,29 @@ Nicholas McCready - https://twitter.com/nmccready
 ;(function() {
   angular.module("uiGmapgoogle-maps.directives.api.utils").service("uiGmapEventsHelper", [
     "uiGmapLogger", function($log) {
+      var _getEventsObj, _hasEvents;
+      _hasEvents = function(obj) {
+        return angular.isDefined(obj.events) && (obj.events != null) && angular.isObject(obj.events);
+      };
+      _getEventsObj = function(scope, model) {
+        if (_hasEvents(scope)) {
+          return scope;
+        }
+        if (_hasEvents(model)) {
+          return model;
+        }
+      };
       return {
         setEvents: function(gObject, scope, model, ignores) {
-          if (angular.isDefined(scope.events) && (scope.events != null) && angular.isObject(scope.events)) {
-            return _.compact(_.map(scope.events, function(eventHandler, eventName) {
+          var eventObj;
+          eventObj = _getEventsObj(scope, model);
+          if (eventObj != null) {
+            return _.compact(_.map(eventObj.events, function(eventHandler, eventName) {
               var doIgnore;
               if (ignores) {
-                doIgnore = _(ignores).contains(eventName);
+                doIgnore = _(ignores).includes(eventName);
               }
-              if (scope.events.hasOwnProperty(eventName) && angular.isFunction(scope.events[eventName]) && !doIgnore) {
+              if (eventObj.events.hasOwnProperty(eventName) && angular.isFunction(eventObj.events[eventName]) && !doIgnore) {
                 return google.maps.event.addListener(gObject, eventName, function() {
                   if (!scope.$evalAsync) {
                     scope.$evalAsync = function() {};
@@ -737,14 +1018,16 @@ Nicholas McCready - https://twitter.com/nmccready
           }
         },
         removeEvents: function(listeners) {
+          var key, l;
           if (!listeners) {
             return;
           }
-          return listeners.forEach(function(l) {
-            if (l) {
-              return google.maps.event.removeListener(l);
+          for (key in listeners) {
+            l = listeners[key];
+            if (l && listeners.hasOwnProperty(key)) {
+              google.maps.event.removeListener(l);
             }
-          });
+          }
         }
       };
     }
@@ -752,52 +1035,47 @@ Nicholas McCready - https://twitter.com/nmccready
 
 }).call(this);
 ;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
-
-  angular.module('uiGmapgoogle-maps.directives.api.utils').factory('uiGmapFitHelper', [
-    'uiGmapBaseObject', 'uiGmapLogger', 'uiGmap_async', function(BaseObject, $log, _async) {
-      var FitHelper;
-      return FitHelper = (function(_super) {
-        __extends(FitHelper, _super);
-
-        function FitHelper() {
-          return FitHelper.__super__.constructor.apply(this, arguments);
-        }
-
-        FitHelper.prototype.fit = function(gMarkers, gMap) {
-          var bounds, everSet;
-          if (gMap && gMarkers && gMarkers.length > 0) {
+  angular.module('uiGmapgoogle-maps.directives.api.utils').service('uiGmapFitHelper', [
+    'uiGmapLogger', function($log) {
+      return {
+        fit: function(markersOrPoints, gMap) {
+          var bounds, everSet, key, markerOrPoint, point;
+          if (gMap && (markersOrPoints != null ? markersOrPoints.length : void 0)) {
             bounds = new google.maps.LatLngBounds();
             everSet = false;
-            return _async.each(gMarkers, (function(_this) {
-              return function(gMarker) {
-                if (gMarker) {
-                  if (!everSet) {
-                    everSet = true;
-                  }
-                  return bounds.extend(gMarker.getPosition());
+            for (key in markersOrPoints) {
+              markerOrPoint = markersOrPoints[key];
+              if (markerOrPoint) {
+                if (!everSet) {
+                  everSet = true;
                 }
-              };
-            })(this)).then(function() {
-              if (everSet) {
-                return gMap.fitBounds(bounds);
+                point = _.isFunction(markerOrPoint.getPosition) ? markerOrPoint.getPosition() : markerOrPoint;
               }
-            });
+              bounds.extend(point);
+            }
+            if (everSet) {
+              return gMap.fitBounds(bounds);
+            }
           }
-        };
-
-        return FitHelper;
-
-      })(BaseObject);
+        }
+      };
     }
   ]);
 
 }).call(this);
-;(function() {
+;
+/*global _:true, angular:true, google:true */
+
+(function() {
   angular.module('uiGmapgoogle-maps.directives.api.utils').service('uiGmapGmapUtil', [
     'uiGmapLogger', '$compile', function(Logger, $compile) {
-      var getCoords, getLatitude, getLongitude, validateCoords;
+      var _isFalse, _isTruthy, getCoords, getLatitude, getLongitude, validateCoords;
+      _isTruthy = function(value, bool, optionsArray) {
+        return value === bool || optionsArray.indexOf(value) !== -1;
+      };
+      _isFalse = function(value) {
+        return _isTruthy(value, false, ['false', 'FALSE', 0, 'n', 'N', 'no', 'NO']);
+      };
       getLatitude = function(value) {
         if (Array.isArray(value) && value.length === 2) {
           return value[1];
@@ -922,11 +1200,12 @@ Nicholas McCready - https://twitter.com/nmccready
           return ret;
         },
         defaultDelay: 50,
-        isTrue: function(val) {
-          return angular.isDefined(val) && val !== null && val === true || val === '1' || val === 'y' || val === 'true';
+        isTrue: function(value) {
+          return _isTruthy(value, true, ['true', 'TRUE', 1, 'y', 'Y', 'yes', 'YES']);
         },
-        isFalse: function(value) {
-          return ['false', 'FALSE', 0, 'n', 'N', 'no', 'NO'].indexOf(value) !== -1;
+        isFalse: _isFalse,
+        isFalsy: function(value) {
+          return _isTruthy(value, false, [void 0, null]) || _isFalse(value);
         },
         getCoords: getCoords,
         validateCoords: validateCoords,
@@ -1030,18 +1309,11 @@ Nicholas McCready - https://twitter.com/nmccready
           }
           return result;
         },
-        extendMapBounds: function(map, points) {
-          var bounds, i;
-          bounds = new google.maps.LatLngBounds();
-          i = 0;
-          while (i < points.length) {
-            bounds.extend(points.getAt(i));
-            i++;
-          }
-          return map.fitBounds(bounds);
-        },
         getPath: function(object, key) {
           var obj;
+          if ((key == null) || !_.isString(key)) {
+            return key;
+          }
           obj = object;
           _.each(key.split('.'), function(value) {
             if (obj) {
@@ -1072,48 +1344,63 @@ Nicholas McCready - https://twitter.com/nmccready
 ;(function() {
   angular.module('uiGmapgoogle-maps.directives.api.utils').service('uiGmapIsReady', [
     '$q', '$timeout', function($q, $timeout) {
-      var ctr, promises, proms;
-      ctr = 0;
-      proms = [];
-      promises = function() {
-        return $q.all(proms);
+      var _checkIfReady, _ctr, _promises, _proms;
+      _ctr = 0;
+      _proms = [];
+      _promises = function() {
+        return $q.all(_proms);
+      };
+      _checkIfReady = function(deferred, expectedInstances, retriesLeft) {
+        return $timeout(function() {
+          if (retriesLeft <= 0) {
+            deferred.reject('Your maps are not found we have checked the maximum amount of times. :)');
+            return;
+          }
+          if (_ctr !== expectedInstances) {
+            _checkIfReady(deferred, expectedInstances, retriesLeft - 1);
+          } else {
+            deferred.resolve(_promises());
+          }
+        }, 100);
       };
       return {
         spawn: function() {
           var d;
           d = $q.defer();
-          proms.push(d.promise);
-          ctr += 1;
+          _proms.push(d.promise);
+          _ctr += 1;
           return {
-            instance: ctr,
+            instance: _ctr,
             deferred: d
           };
         },
-        promises: promises,
+        promises: _promises,
         instances: function() {
-          return ctr;
+          return _ctr;
         },
-        promise: function(expect) {
-          var d, ohCrap;
-          if (expect == null) {
-            expect = 1;
+        promise: function(expectedInstances, numRetries) {
+          var d;
+          if (expectedInstances == null) {
+            expectedInstances = 1;
+          }
+          if (numRetries == null) {
+            numRetries = 50;
           }
           d = $q.defer();
-          ohCrap = function() {
-            return $timeout(function() {
-              if (ctr !== expect) {
-                return ohCrap();
-              } else {
-                return d.resolve(promises());
-              }
-            });
-          };
-          ohCrap();
+          _checkIfReady(d, expectedInstances, numRetries);
           return d.promise;
         },
         reset: function() {
-          ctr = 0;
-          return proms.length = 0;
+          _ctr = 0;
+          _proms.length = 0;
+        },
+        decrement: function() {
+          if (_ctr > 0) {
+            _ctr -= 1;
+          }
+          if (_proms.length) {
+            _proms.length -= 1;
+          }
         }
       };
     }
@@ -1121,14 +1408,14 @@ Nicholas McCready - https://twitter.com/nmccready
 
 }).call(this);
 ;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module("uiGmapgoogle-maps.directives.api.utils").factory("uiGmapLinked", [
     "uiGmapBaseObject", function(BaseObject) {
       var Linked;
-      Linked = (function(_super) {
-        __extends(Linked, _super);
+      Linked = (function(superClass) {
+        extend(Linked, superClass);
 
         function Linked(scope, element, attrs, ctrls) {
           this.scope = scope;
@@ -1146,121 +1433,105 @@ Nicholas McCready - https://twitter.com/nmccready
 
 }).call(this);
 ;(function() {
-  angular.module("uiGmapgoogle-maps.directives.api.utils").service("uiGmapLogger", [
-    "$log", function($log) {
-      var LEVELS, log, logFns, maybeExecLevel;
-      this.doLog = true;
-      LEVELS = {
-        log: 1,
-        info: 2,
-        debug: 3,
-        warn: 4,
-        error: 5,
-        none: 6
-      };
-      maybeExecLevel = function(level, current, fn) {
-        if (level >= current) {
-          return fn();
-        }
-      };
-      log = function(logLevelFnName, msg) {
-        if ($log != null) {
-          return $log[logLevelFnName](msg);
-        } else {
-          return console[logLevelFnName](msg);
-        }
-      };
-      logFns = {};
-      ['log', 'info', 'debug', 'warn', 'error'].forEach((function(_this) {
-        return function(level) {
-          return logFns[level] = function(msg) {
-            if (_this.doLog) {
-              return maybeExecLevel(LEVELS[level], _this.currentLevel, function() {
-                return log(level, msg);
-              });
-            }
-          };
-        };
-      })(this));
-      this.LEVELS = LEVELS;
-      this.currentLevel = LEVELS.error;
-      this.log = logFns['log'];
-      this.info = logFns['info'];
-      this.debug = logFns['debug'];
-      this.warn = logFns['warn'];
-      this.error = logFns['error'];
-      return this;
+  angular.module('uiGmapgoogle-maps.directives.api.utils').service('uiGmapLogger', [
+    'nemSimpleLogger', function(nemSimpleLogger) {
+      return nemSimpleLogger.spawn();
     }
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global _:true, angular:true */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api.utils').factory('uiGmapModelKey', [
-    'uiGmapBaseObject', 'uiGmapGmapUtil', 'uiGmapPromise', '$q', '$timeout', function(BaseObject, GmapUtil, uiGmapPromise, $q, $timeout) {
-      var ModelKey;
-      return ModelKey = (function(_super) {
-        __extends(ModelKey, _super);
+    'uiGmapBaseObject', 'uiGmapGmapUtil', function(BaseObject, GmapUtil) {
+      return (function(superClass) {
+        extend(_Class, superClass);
 
-        function ModelKey(scope) {
-          this.scope = scope;
-          this.destroy = __bind(this.destroy, this);
-          this.setChildScope = __bind(this.setChildScope, this);
-          this.getChanges = __bind(this.getChanges, this);
-          this.getProp = __bind(this.getProp, this);
-          this.setIdKey = __bind(this.setIdKey, this);
-          this.modelKeyComparison = __bind(this.modelKeyComparison, this);
-          ModelKey.__super__.constructor.call(this);
+        function _Class(scope1, _interface) {
+          this.scope = scope1;
+          this["interface"] = _interface != null ? _interface : {
+            scopeKeys: []
+          };
+          this.modelsLength = bind(this.modelsLength, this);
+          this.updateChild = bind(this.updateChild, this);
+          this.destroy = bind(this.destroy, this);
+          this.setChildScope = bind(this.setChildScope, this);
+          this.getChanges = bind(this.getChanges, this);
+          this.getProp = bind(this.getProp, this);
+          this.setIdKey = bind(this.setIdKey, this);
+          this.modelKeyComparison = bind(this.modelKeyComparison, this);
+          _Class.__super__.constructor.call(this);
           this.defaultIdKey = 'id';
           this.idKey = void 0;
         }
 
-        ModelKey.prototype.evalModelHandle = function(model, modelKey) {
-          if (model === void 0 || modelKey === void 0) {
-            return void 0;
+        _Class.prototype.evalModelHandle = function(model, modelKey) {
+          if ((model == null) || (modelKey == null)) {
+            return;
           }
           if (modelKey === 'self') {
             return model;
           } else {
+            if (_.isFunction(modelKey)) {
+              modelKey = modelKey();
+            }
             return GmapUtil.getPath(model, modelKey);
           }
         };
 
-        ModelKey.prototype.modelKeyComparison = function(model1, model2) {
-          var scope;
-          scope = this.scope.coords != null ? this.scope : this.parentScope;
-          if (scope == null) {
-            throw 'No scope or parentScope set!';
+        _Class.prototype.modelKeyComparison = function(model1, model2) {
+          var coord1, coord2, hasCoords, isEqual, scope, without;
+          hasCoords = this["interface"].scopeKeys.indexOf('coords') >= 0;
+          if (hasCoords && (this.scope.coords != null) || !hasCoords) {
+            scope = this.scope;
           }
-          return GmapUtil.equalCoords(this.evalModelHandle(model1, scope.coords), this.evalModelHandle(model2, scope.coords));
+          if (scope == null) {
+            throw 'No scope set!';
+          }
+          if (hasCoords) {
+            coord1 = this.scopeOrModelVal('coords', scope, model1);
+            coord2 = this.scopeOrModelVal('coords', scope, model2);
+            isEqual = GmapUtil.equalCoords(coord1, coord2);
+            if (!isEqual) {
+              return isEqual;
+            }
+          }
+          without = _.without(this["interface"].scopeKeys, 'coords');
+          isEqual = _.every(without, (function(_this) {
+            return function(k) {
+              return _this.scopeOrModelVal(scope[k], scope, model1) === _this.scopeOrModelVal(scope[k], scope, model2);
+            };
+          })(this));
+          return isEqual;
         };
 
-        ModelKey.prototype.setIdKey = function(scope) {
+        _Class.prototype.setIdKey = function(scope) {
           return this.idKey = scope.idKey != null ? scope.idKey : this.defaultIdKey;
         };
 
-        ModelKey.prototype.setVal = function(model, key, newValue) {
-          var thingToSet;
-          thingToSet = this.modelOrKey(model, key);
-          thingToSet = newValue;
+        _Class.prototype.setVal = function(model, key, newValue) {
+          this.modelOrKey(model, key = newValue);
           return model;
         };
 
-        ModelKey.prototype.modelOrKey = function(model, key) {
+        _Class.prototype.modelOrKey = function(model, key) {
           if (key == null) {
             return;
           }
           if (key !== 'self') {
-            return model[key];
+            return GmapUtil.getPath(model, key);
           }
           return model;
         };
 
-        ModelKey.prototype.getProp = function(propName, model) {
-          return this.modelOrKey(model, propName);
+        _Class.prototype.getProp = function(propName, scope, model) {
+          return this.scopeOrModelVal(propName, scope, model);
         };
 
 
@@ -1271,7 +1542,7 @@ Nicholas McCready - https://twitter.com/nmccready
         actually tracked by scope. (should make things faster with whitelisted)
          */
 
-        ModelKey.prototype.getChanges = function(now, prev, whitelistedProps) {
+        _Class.prototype.getChanges = function(now, prev, whitelistedProps) {
           var c, changes, prop;
           if (whitelistedProps) {
             prev = _.pick(prev, whitelistedProps);
@@ -1297,7 +1568,7 @@ Nicholas McCready - https://twitter.com/nmccready
           return changes;
         };
 
-        ModelKey.prototype.scopeOrModelVal = function(key, scope, model, doWrap) {
+        _Class.prototype.scopeOrModelVal = function(key, scope, model, doWrap) {
           var maybeWrap, modelKey, modelProp, scopeProp;
           if (doWrap == null) {
             doWrap = false;
@@ -1314,7 +1585,7 @@ Nicholas McCready - https://twitter.com/nmccready
             }
             return ret;
           };
-          scopeProp = scope[key];
+          scopeProp = _.get(scope, key);
           if (_.isFunction(scopeProp)) {
             return maybeWrap(true, scopeProp(model), doWrap);
           }
@@ -1326,9 +1597,9 @@ Nicholas McCready - https://twitter.com/nmccready
           }
           modelKey = scopeProp;
           if (!modelKey) {
-            modelProp = model[key];
+            modelProp = _.get(model, key);
           } else {
-            modelProp = modelKey === 'self' ? model : model[modelKey];
+            modelProp = modelKey === 'self' ? model : _.get(model, modelKey);
           }
           if (_.isFunction(modelProp)) {
             return maybeWrap(false, modelProp(), doWrap);
@@ -1336,35 +1607,62 @@ Nicholas McCready - https://twitter.com/nmccready
           return maybeWrap(false, modelProp, doWrap);
         };
 
-        ModelKey.prototype.setChildScope = function(keys, childScope, model) {
-          _.each(keys, (function(_this) {
-            return function(name) {
-              var isScopeObj, newValue;
-              isScopeObj = _this.scopeOrModelVal(name, childScope, model, true);
-              if (!isScopeObj.isScope) {
-                newValue = isScopeObj.value;
-                if (newValue !== childScope[name]) {
-                  return childScope[name] = newValue;
-                }
+        _Class.prototype.setChildScope = function(keys, childScope, model) {
+          var isScopeObj, key, name, newValue;
+          for (key in keys) {
+            name = keys[key];
+            isScopeObj = this.scopeOrModelVal(name, childScope, model, true);
+            if ((isScopeObj != null ? isScopeObj.value : void 0) != null) {
+              newValue = isScopeObj.value;
+              if (newValue !== childScope[name]) {
+                childScope[name] = newValue;
               }
-            };
-          })(this));
+            }
+          }
           return childScope.model = model;
         };
 
-        ModelKey.prototype.destroy = function(manualOverride) {
-          var _ref;
+        _Class.prototype.onDestroy = function(scope) {};
+
+        _Class.prototype.destroy = function(manualOverride) {
+          var ref;
           if (manualOverride == null) {
             manualOverride = false;
           }
-          if ((this.scope != null) && !((_ref = this.scope) != null ? _ref.$$destroyed : void 0) && (this.needToManualDestroy || manualOverride)) {
+          if ((this.scope != null) && !((ref = this.scope) != null ? ref.$$destroyed : void 0) && (this.needToManualDestroy || manualOverride)) {
             return this.scope.$destroy();
           } else {
             return this.clean();
           }
         };
 
-        return ModelKey;
+        _Class.prototype.updateChild = function(child, model) {
+          if (model[this.idKey] == null) {
+            this.$log.error("Model has no id to assign a child to. This is required for performance. Please assign id, or redirect id to a different key.");
+            return;
+          }
+          return child.updateModel(model);
+        };
+
+        _Class.prototype.modelsLength = function(arrayOrObjModels) {
+          var len, toCheck;
+          if (arrayOrObjModels == null) {
+            arrayOrObjModels = void 0;
+          }
+          len = 0;
+          toCheck = arrayOrObjModels ? arrayOrObjModels : this.scope.models;
+          if (toCheck == null) {
+            return len;
+          }
+          if (angular.isArray(toCheck) || (toCheck.length != null)) {
+            len = toCheck.length;
+          } else {
+            len = Object.keys(toCheck).length;
+          }
+          return len;
+        };
+
+        return _Class;
 
       })(BaseObject);
     }
@@ -1377,11 +1675,9 @@ Nicholas McCready - https://twitter.com/nmccready
       return {
         didQueueInitPromise: function(existingPiecesObj, scope) {
           if (scope.models.length === 0) {
-            _async.promiseLock(existingPiecesObj, uiGmapPromise.promiseTypes.init, null, null, ((function(_this) {
-              return function() {
-                return uiGmapPromise.resolve();
-              };
-            })(this)));
+            _async.promiseLock(existingPiecesObj, uiGmapPromise.promiseTypes.init, null, null, (function() {
+              return uiGmapPromise.resolve();
+            }));
             return true;
           }
           return false;
@@ -1400,7 +1696,7 @@ Nicholas McCready - https://twitter.com/nmccready
                 return adds.push(m);
               } else {
                 child = childObjects.get(m[idKey]);
-                if (!comparison(m, child.clonedModel)) {
+                if (!comparison(m, child.clonedModel, scope)) {
                   return updates.push({
                     model: m,
                     child: child
@@ -1558,148 +1854,146 @@ Nicholas McCready - https://twitter.com/nmccready
   ]);
 
 }).call(this);
-;
-/*
-    Simple Object Map with a lenght property to make it easy to track length/size
- */
-
-(function() {
-  var propsToPop,
-    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
-
-  propsToPop = ['get', 'put', 'remove', 'values', 'keys', 'length', 'push', 'didValueStateChange', 'didKeyStateChange', 'slice', 'removeAll', 'allVals', 'allKeys', 'stateChanged'];
-
-  window.PropMap = (function() {
-    function PropMap() {
-      this.removeAll = __bind(this.removeAll, this);
-      this.slice = __bind(this.slice, this);
-      this.push = __bind(this.push, this);
-      this.keys = __bind(this.keys, this);
-      this.values = __bind(this.values, this);
-      this.remove = __bind(this.remove, this);
-      this.put = __bind(this.put, this);
-      this.stateChanged = __bind(this.stateChanged, this);
-      this.get = __bind(this.get, this);
-      this.length = 0;
-      this.dict = {};
-      this.didValsStateChange = false;
-      this.didKeysStateChange = false;
-      this.allVals = [];
-      this.allKeys = [];
-    }
-
-    PropMap.prototype.get = function(key) {
-      return this.dict[key];
-    };
-
-    PropMap.prototype.stateChanged = function() {
-      this.didValsStateChange = true;
-      return this.didKeysStateChange = true;
-    };
-
-    PropMap.prototype.put = function(key, value) {
-      if (this.get(key) == null) {
-        this.length++;
-      }
-      this.stateChanged();
-      return this.dict[key] = value;
-    };
-
-    PropMap.prototype.remove = function(key, isSafe) {
-      var value;
-      if (isSafe == null) {
-        isSafe = false;
-      }
-      if (isSafe && !this.get(key)) {
-        return void 0;
-      }
-      value = this.dict[key];
-      delete this.dict[key];
-      this.length--;
-      this.stateChanged();
-      return value;
-    };
-
-    PropMap.prototype.valuesOrKeys = function(str) {
-      var keys, vals;
-      if (str == null) {
-        str = 'Keys';
-      }
-      if (!this["did" + str + "StateChange"]) {
-        return this['all' + str];
-      }
-      vals = [];
-      keys = [];
-      _.each(this.dict, function(v, k) {
-        vals.push(v);
-        return keys.push(k);
-      });
-      this.didKeysStateChange = false;
-      this.didValsStateChange = false;
-      this.allVals = vals;
-      this.allKeys = keys;
-      return this['all' + str];
-    };
-
-    PropMap.prototype.values = function() {
-      return this.valuesOrKeys('Vals');
-    };
-
-    PropMap.prototype.keys = function() {
-      return this.valuesOrKeys();
-    };
-
-    PropMap.prototype.push = function(obj, key) {
-      if (key == null) {
-        key = "key";
-      }
-      return this.put(obj[key], obj);
-    };
-
-    PropMap.prototype.slice = function() {
-      return this.keys().map((function(_this) {
-        return function(k) {
-          return _this.remove(k);
-        };
-      })(this));
-    };
-
-    PropMap.prototype.removeAll = function() {
-      return this.slice();
-    };
-
-    PropMap.prototype.each = function(cb) {
-      return _.each(this.dict, function(v, k) {
-        return cb(v);
-      });
-    };
-
-    PropMap.prototype.map = function(cb) {
-      return _.map(this.dict, function(v, k) {
-        return cb(v);
-      });
-    };
-
-    return PropMap;
-
-  })();
+;(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   angular.module("uiGmapgoogle-maps.directives.api.utils").factory("uiGmapPropMap", function() {
-    return window.PropMap;
+
+    /*
+      Simple Object Map with a length property to make it easy to track length/size
+     */
+    var PropMap;
+    return PropMap = (function() {
+      function PropMap() {
+        this.removeAll = bind(this.removeAll, this);
+        this.slice = bind(this.slice, this);
+        this.push = bind(this.push, this);
+        this.keys = bind(this.keys, this);
+        this.values = bind(this.values, this);
+        this.remove = bind(this.remove, this);
+        this.put = bind(this.put, this);
+        this.stateChanged = bind(this.stateChanged, this);
+        this.get = bind(this.get, this);
+        this.length = 0;
+        this.dict = {};
+        this.didValsStateChange = false;
+        this.didKeysStateChange = false;
+        this.allVals = [];
+        this.allKeys = [];
+      }
+
+      PropMap.prototype.get = function(key) {
+        return this.dict[key];
+      };
+
+      PropMap.prototype.stateChanged = function() {
+        this.didValsStateChange = true;
+        return this.didKeysStateChange = true;
+      };
+
+      PropMap.prototype.put = function(key, value) {
+        if (this.get(key) == null) {
+          this.length++;
+        }
+        this.stateChanged();
+        return this.dict[key] = value;
+      };
+
+      PropMap.prototype.remove = function(key, isSafe) {
+        var value;
+        if (isSafe == null) {
+          isSafe = false;
+        }
+        if (isSafe && !this.get(key)) {
+          return void 0;
+        }
+        value = this.dict[key];
+        delete this.dict[key];
+        this.length--;
+        this.stateChanged();
+        return value;
+      };
+
+      PropMap.prototype.valuesOrKeys = function(str) {
+        var keys, vals;
+        if (str == null) {
+          str = 'Keys';
+        }
+        if (!this["did" + str + "StateChange"]) {
+          return this['all' + str];
+        }
+        vals = [];
+        keys = [];
+        _.each(this.dict, function(v, k) {
+          vals.push(v);
+          return keys.push(k);
+        });
+        this.didKeysStateChange = false;
+        this.didValsStateChange = false;
+        this.allVals = vals;
+        this.allKeys = keys;
+        return this['all' + str];
+      };
+
+      PropMap.prototype.values = function() {
+        return this.valuesOrKeys('Vals');
+      };
+
+      PropMap.prototype.keys = function() {
+        return this.valuesOrKeys();
+      };
+
+      PropMap.prototype.push = function(obj, key) {
+        if (key == null) {
+          key = "key";
+        }
+        return this.put(obj[key], obj);
+      };
+
+      PropMap.prototype.slice = function() {
+        return this.keys().map((function(_this) {
+          return function(k) {
+            return _this.remove(k);
+          };
+        })(this));
+      };
+
+      PropMap.prototype.removeAll = function() {
+        return this.slice();
+      };
+
+      PropMap.prototype.each = function(cb) {
+        return _.each(this.dict, function(v, k) {
+          return cb(v);
+        });
+      };
+
+      PropMap.prototype.map = function(cb) {
+        return _.map(this.dict, function(v, k) {
+          return cb(v);
+        });
+      };
+
+      return PropMap;
+
+    })();
   });
 
 }).call(this);
-;(function() {
+;
+/*globals angular,_ */
+
+(function() {
   angular.module("uiGmapgoogle-maps.directives.api.utils").factory("uiGmapPropertyAction", [
     "uiGmapLogger", function(Logger) {
       var PropertyAction;
       PropertyAction = function(setterFn) {
-        this.setIfChange = function(newVal, oldVal) {
-          var callingKey;
-          callingKey = this.exp;
-          if (!_.isEqual(oldVal, newVal)) {
-            return setterFn(callingKey, newVal);
-          }
+        this.setIfChange = function(callingKey) {
+          return function(newVal, oldVal) {
+            if (!_.isEqual(oldVal, newVal)) {
+              return setterFn(callingKey, newVal);
+            }
+          };
         };
         this.sic = this.setIfChange;
         return this;
@@ -1710,16 +2004,12 @@ Nicholas McCready - https://twitter.com/nmccready
 
 }).call(this);
 ;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   angular.module('uiGmapgoogle-maps.directives.api.managers').factory('uiGmapClustererMarkerManager', [
-    'uiGmapLogger', 'uiGmapFitHelper', 'uiGmapPropMap', function($log, FitHelper, PropMap) {
+    'uiGmapLogger', 'uiGmapFitHelper', 'uiGmapPropMap', 'uiGmapEventsHelper', function($log, FitHelper, PropMap, EventsHelper) {
       var ClustererMarkerManager;
-      ClustererMarkerManager = (function(_super) {
-        __extends(ClustererMarkerManager, _super);
-
+      ClustererMarkerManager = (function() {
         ClustererMarkerManager.type = 'ClustererMarkerManager';
 
         function ClustererMarkerManager(gMap, opt_markers, opt_options, opt_events) {
@@ -1728,18 +2018,18 @@ Nicholas McCready - https://twitter.com/nmccready
           }
           this.opt_options = opt_options != null ? opt_options : {};
           this.opt_events = opt_events;
-          this.checkSync = __bind(this.checkSync, this);
-          this.getGMarkers = __bind(this.getGMarkers, this);
-          this.fit = __bind(this.fit, this);
-          this.destroy = __bind(this.destroy, this);
-          this.clear = __bind(this.clear, this);
-          this.draw = __bind(this.draw, this);
-          this.removeMany = __bind(this.removeMany, this);
-          this.remove = __bind(this.remove, this);
-          this.addMany = __bind(this.addMany, this);
-          this.update = __bind(this.update, this);
-          this.add = __bind(this.add, this);
-          ClustererMarkerManager.__super__.constructor.call(this);
+          this.checkSync = bind(this.checkSync, this);
+          this.getGMarkers = bind(this.getGMarkers, this);
+          this.fit = bind(this.fit, this);
+          this.destroy = bind(this.destroy, this);
+          this.attachEvents = bind(this.attachEvents, this);
+          this.clear = bind(this.clear, this);
+          this.draw = bind(this.draw, this);
+          this.removeMany = bind(this.removeMany, this);
+          this.remove = bind(this.remove, this);
+          this.addMany = bind(this.addMany, this);
+          this.update = bind(this.update, this);
+          this.add = bind(this.add, this);
           this.type = ClustererMarkerManager.type;
           this.clusterer = new NgMapMarkerClusterer(gMap, opt_markers, this.opt_options);
           this.propMapGMarkers = new PropMap();
@@ -1753,7 +2043,7 @@ Nicholas McCready - https://twitter.com/nmccready
           var msg;
           if (gMarker.key == null) {
             msg = 'gMarker.key undefined and it is REQUIRED!!';
-            return Logger.error(msg);
+            return $log.error(msg);
           }
         };
 
@@ -1806,47 +2096,35 @@ Nicholas McCready - https://twitter.com/nmccready
         };
 
         ClustererMarkerManager.prototype.attachEvents = function(options, optionsName) {
-          var eventHandler, eventName, _results;
+          var eventHandler, eventName, results;
+          this.listeners = [];
           if (angular.isDefined(options) && (options != null) && angular.isObject(options)) {
-            _results = [];
+            results = [];
             for (eventName in options) {
               eventHandler = options[eventName];
               if (options.hasOwnProperty(eventName) && angular.isFunction(options[eventName])) {
-                $log.info("" + optionsName + ": Attaching event: " + eventName + " to clusterer");
-                _results.push(google.maps.event.addListener(this.clusterer, eventName, options[eventName]));
+                $log.info(optionsName + ": Attaching event: " + eventName + " to clusterer");
+                results.push(this.listeners.push(google.maps.event.addListener(this.clusterer, eventName, options[eventName])));
               } else {
-                _results.push(void 0);
+                results.push(void 0);
               }
             }
-            return _results;
+            return results;
           }
         };
 
-        ClustererMarkerManager.prototype.clearEvents = function(options) {
-          var eventHandler, eventName, _results;
-          if (angular.isDefined(options) && (options != null) && angular.isObject(options)) {
-            _results = [];
-            for (eventName in options) {
-              eventHandler = options[eventName];
-              if (options.hasOwnProperty(eventName) && angular.isFunction(options[eventName])) {
-                $log.info("" + optionsName + ": Clearing event: " + eventName + " to clusterer");
-                _results.push(google.maps.event.clearListeners(this.clusterer, eventName));
-              } else {
-                _results.push(void 0);
-              }
-            }
-            return _results;
-          }
+        ClustererMarkerManager.prototype.clearEvents = function() {
+          EventsHelper.removeEvents(this.listeners);
+          return this.listeners = [];
         };
 
         ClustererMarkerManager.prototype.destroy = function() {
-          this.clearEvents(this.opt_events);
-          this.clearEvents(this.opt_internal_events);
+          this.clearEvents();
           return this.clear();
         };
 
         ClustererMarkerManager.prototype.fit = function() {
-          return ClustererMarkerManager.__super__.fit.call(this, this.getGMarkers(), this.clusterer.getMap());
+          return FitHelper.fit(this.getGMarkers(), this.clusterer.getMap());
         };
 
         ClustererMarkerManager.prototype.getGMarkers = function() {
@@ -1857,39 +2135,68 @@ Nicholas McCready - https://twitter.com/nmccready
 
         return ClustererMarkerManager;
 
-      })(FitHelper);
+      })();
       return ClustererMarkerManager;
     }
   ]);
 
 }).call(this);
 ;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  angular.module('uiGmapgoogle-maps.directives.api.managers').service('uiGmapGoogleMapObjectManager', [
+    function() {
+      var _availableInstances, _usedInstances;
+      _availableInstances = [];
+      _usedInstances = [];
+      return {
+        createMapInstance: function(parentElement, options) {
+          var instance;
+          instance = null;
+          if (_availableInstances.length === 0) {
+            instance = new google.maps.Map(parentElement, options);
+            _usedInstances.push(instance);
+          } else {
+            instance = _availableInstances.pop();
+            angular.element(parentElement).append(instance.getDiv());
+            instance.setOptions(options);
+            _usedInstances.push(instance);
+          }
+          return instance;
+        },
+        recycleMapInstance: function(instance) {
+          var index;
+          index = _usedInstances.indexOf(instance);
+          if (index < 0) {
+            throw new Error('Expected map instance to be a previously used instance');
+          }
+          _usedInstances.splice(index, 1);
+          return _availableInstances.push(instance);
+        }
+      };
+    }
+  ]);
+
+}).call(this);
+;(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   angular.module("uiGmapgoogle-maps.directives.api.managers").factory("uiGmapMarkerManager", [
     "uiGmapLogger", "uiGmapFitHelper", "uiGmapPropMap", function(Logger, FitHelper, PropMap) {
       var MarkerManager;
-      MarkerManager = (function(_super) {
-        __extends(MarkerManager, _super);
-
-        MarkerManager.include(FitHelper);
-
+      MarkerManager = (function() {
         MarkerManager.type = 'MarkerManager';
 
         function MarkerManager(gMap, opt_markers, opt_options) {
-          this.getGMarkers = __bind(this.getGMarkers, this);
-          this.fit = __bind(this.fit, this);
-          this.handleOptDraw = __bind(this.handleOptDraw, this);
-          this.clear = __bind(this.clear, this);
-          this.draw = __bind(this.draw, this);
-          this.removeMany = __bind(this.removeMany, this);
-          this.remove = __bind(this.remove, this);
-          this.addMany = __bind(this.addMany, this);
-          this.update = __bind(this.update, this);
-          this.add = __bind(this.add, this);
-          MarkerManager.__super__.constructor.call(this);
+          this.getGMarkers = bind(this.getGMarkers, this);
+          this.fit = bind(this.fit, this);
+          this.handleOptDraw = bind(this.handleOptDraw, this);
+          this.clear = bind(this.clear, this);
+          this.destroy = bind(this.destroy, this);
+          this.draw = bind(this.draw, this);
+          this.removeMany = bind(this.removeMany, this);
+          this.remove = bind(this.remove, this);
+          this.addMany = bind(this.addMany, this);
+          this.update = bind(this.update, this);
+          this.add = bind(this.add, this);
           this.type = MarkerManager.type;
           this.gMap = gMap;
           this.gMarkers = new PropMap();
@@ -1971,6 +2278,10 @@ Nicholas McCready - https://twitter.com/nmccready
           })(this));
         };
 
+        MarkerManager.prototype.destroy = function() {
+          return this.clear();
+        };
+
         MarkerManager.prototype.clear = function() {
           this.gMarkers.each(function(gMarker) {
             return gMarker.setMap(null);
@@ -1994,7 +2305,7 @@ Nicholas McCready - https://twitter.com/nmccready
         };
 
         MarkerManager.prototype.fit = function() {
-          return MarkerManager.__super__.fit.call(this, this.getGMarkers(), this.gMap);
+          return FitHelper.fit(this.getGMarkers(), this.gMap);
         };
 
         MarkerManager.prototype.getGMarkers = function() {
@@ -2003,8 +2314,160 @@ Nicholas McCready - https://twitter.com/nmccready
 
         return MarkerManager;
 
-      })(FitHelper);
+      })();
       return MarkerManager;
+    }
+  ]);
+
+}).call(this);
+;(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+
+  angular.module('uiGmapgoogle-maps.directives.api.managers').factory('uiGmapSpiderfierMarkerManager', [
+    'uiGmapLogger', 'uiGmapFitHelper', 'uiGmapPropMap', 'uiGmapMarkerSpiderfier', function($log, FitHelper, PropMap, MarkerSpiderfier) {
+      var SpiderfierMarkerManager;
+      return SpiderfierMarkerManager = (function() {
+        SpiderfierMarkerManager.type = 'SpiderfierMarkerManager';
+
+        function SpiderfierMarkerManager(gMap, opt_markers, opt_options, opt_events, scope) {
+          if (opt_markers == null) {
+            opt_markers = {};
+          }
+          this.opt_options = opt_options != null ? opt_options : {};
+          this.opt_events = opt_events;
+          this.scope = scope;
+          this.checkSync = bind(this.checkSync, this);
+          this.isSpiderfied = bind(this.isSpiderfied, this);
+          this.getGMarkers = bind(this.getGMarkers, this);
+          this.fit = bind(this.fit, this);
+          this.destroy = bind(this.destroy, this);
+          this.attachEvents = bind(this.attachEvents, this);
+          this.clear = bind(this.clear, this);
+          this.draw = bind(this.draw, this);
+          this.removeMany = bind(this.removeMany, this);
+          this.remove = bind(this.remove, this);
+          this.addMany = bind(this.addMany, this);
+          this.update = bind(this.update, this);
+          this.add = bind(this.add, this);
+          this.type = SpiderfierMarkerManager.type;
+          this.markerSpiderfier = new MarkerSpiderfier(gMap, this.opt_options);
+          this.propMapGMarkers = new PropMap();
+          this.attachEvents(this.opt_events, 'opt_events');
+          this.noDrawOnSingleAddRemoves = true;
+          $log.info(this);
+        }
+
+        SpiderfierMarkerManager.prototype.checkKey = function(gMarker) {
+          var msg;
+          if (gMarker.key == null) {
+            msg = 'gMarker.key undefined and it is REQUIRED!!';
+            return $log.error(msg);
+          }
+        };
+
+        SpiderfierMarkerManager.prototype.add = function(gMarker) {
+          gMarker.setMap(this.markerSpiderfier.map);
+          this.checkKey(gMarker);
+          this.markerSpiderfier.addMarker(gMarker, this.noDrawOnSingleAddRemoves);
+          this.propMapGMarkers.put(gMarker.key, gMarker);
+          return this.checkSync();
+        };
+
+        SpiderfierMarkerManager.prototype.update = function(gMarker) {
+          this.remove(gMarker);
+          return this.add(gMarker);
+        };
+
+        SpiderfierMarkerManager.prototype.addMany = function(gMarkers) {
+          return gMarkers.forEach((function(_this) {
+            return function(gMarker) {
+              return _this.add(gMarker);
+            };
+          })(this));
+        };
+
+        SpiderfierMarkerManager.prototype.remove = function(gMarker) {
+          var exists;
+          this.checkKey(gMarker);
+          exists = this.propMapGMarkers.get(gMarker.key);
+          if (exists) {
+            gMarker.setMap(null);
+            this.markerSpiderfier.removeMarker(gMarker, this.noDrawOnSingleAddRemoves);
+            this.propMapGMarkers.remove(gMarker.key);
+          }
+          return this.checkSync();
+        };
+
+        SpiderfierMarkerManager.prototype.removeMany = function(gMarkers) {
+          return gMarkers.forEach((function(_this) {
+            return function(gMarker) {
+              return _this.remove(gMarker);
+            };
+          })(this));
+        };
+
+        SpiderfierMarkerManager.prototype.draw = function() {};
+
+        SpiderfierMarkerManager.prototype.clear = function() {
+          return this.removeMany(this.getGMarkers());
+        };
+
+        SpiderfierMarkerManager.prototype.attachEvents = function(options, optionsName) {
+          if (angular.isDefined(options) && (options != null) && angular.isObject(options)) {
+            return _.each(options, (function(_this) {
+              return function(eventHandler, eventName) {
+                if (options.hasOwnProperty(eventName) && angular.isFunction(options[eventName])) {
+                  $log.info(optionsName + ": Attaching event: " + eventName + " to markerSpiderfier");
+                  return _this.markerSpiderfier.addListener(eventName, function() {
+                    if (eventName === 'spiderfy' || eventName === 'unspiderfy') {
+                      return _this.scope.$evalAsync(options[eventName].apply(options, arguments));
+                    } else {
+                      return _this.scope.$evalAsync(options[eventName].apply(options, [arguments[0], eventName, arguments[0].model, arguments]));
+                    }
+                  });
+                }
+              };
+            })(this));
+          }
+        };
+
+        SpiderfierMarkerManager.prototype.clearEvents = function(options, optionsName) {
+          var eventHandler, eventName;
+          if (angular.isDefined(options) && (options != null) && angular.isObject(options)) {
+            for (eventName in options) {
+              eventHandler = options[eventName];
+              if (options.hasOwnProperty(eventName) && angular.isFunction(options[eventName])) {
+                $log.info(optionsName + ": Clearing event: " + eventName + " to markerSpiderfier");
+                this.markerSpiderfier.clearListeners(eventName);
+              }
+            }
+          }
+        };
+
+        SpiderfierMarkerManager.prototype.destroy = function() {
+          this.clearEvents(this.opt_events, 'opt_events');
+          return this.clear();
+        };
+
+        SpiderfierMarkerManager.prototype.fit = function() {
+          return FitHelper.fit(this.getGMarkers(), this.markerSpiderfier.map);
+        };
+
+        SpiderfierMarkerManager.prototype.getGMarkers = function() {
+          return this.markerSpiderfier.getMarkers();
+        };
+
+        SpiderfierMarkerManager.prototype.isSpiderfied = function() {
+          return _.find(this.getGMarkers(), function(gMarker) {
+            return (gMarker != null ? gMarker._omsData : void 0) != null;
+          });
+        };
+
+        SpiderfierMarkerManager.prototype.checkSync = function() {};
+
+        return SpiderfierMarkerManager;
+
+      })();
     }
   ]);
 
@@ -2103,10 +2566,7 @@ Nicholas McCready - https://twitter.com/nmccready
                 return;
               }
               value = mapArray.getAt(index);
-              if (!value) {
-                return;
-              }
-              if (!value.lng || !value.lat) {
+              if (!(value && value.lng && value.lat)) {
                 return;
               }
               geojsonArray[index][1] = value.lat();
@@ -2267,20 +2727,60 @@ Nicholas McCready - https://twitter.com/nmccready
 
 }).call(this);
 ;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  angular.module('uiGmapgoogle-maps').service('uiGmapObjectIterators', function() {
+    var _ignores, _iterators, _slapForEach, _slapMap;
+    _ignores = ['length', 'forEach', 'map'];
+    _iterators = [];
+    _slapForEach = function(object) {
+      object.forEach = function(cb) {
+        return _.each(_.omit(object, _ignores), function(val) {
+          if (!_.isFunction(val)) {
+            return cb(val);
+          }
+        });
+      };
+      return object;
+    };
+    _iterators.push(_slapForEach);
+    _slapMap = function(object) {
+      object.map = function(cb) {
+        return _.map(_.omit(object, _ignores), function(val) {
+          if (!_.isFunction(val)) {
+            return cb(val);
+          }
+        });
+      };
+      return object;
+    };
+    _iterators.push(_slapMap);
+    return {
+      slapMap: _slapMap,
+      slapForEach: _slapForEach,
+      slapAll: function(object) {
+        _iterators.forEach(function(it) {
+          return it(object);
+        });
+        return object;
+      }
+    };
+  });
+
+}).call(this);
+;(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api.options.builders').service('uiGmapCommonOptionsBuilder', [
     'uiGmapBaseObject', 'uiGmapLogger', 'uiGmapModelKey', function(BaseObject, $log, ModelKey) {
       var CommonOptionsBuilder;
-      return CommonOptionsBuilder = (function(_super) {
-        __extends(CommonOptionsBuilder, _super);
+      return CommonOptionsBuilder = (function(superClass) {
+        extend(CommonOptionsBuilder, superClass);
 
         function CommonOptionsBuilder() {
-          this.watchProps = __bind(this.watchProps, this);
-          this.buildOpts = __bind(this.buildOpts, this);
-          this.hasModel = _(this.scope).chain().keys().contains('model').value();
+          this.watchProps = bind(this.watchProps, this);
+          this.buildOpts = bind(this.buildOpts, this);
+          return CommonOptionsBuilder.__super__.constructor.apply(this, arguments);
         }
 
         CommonOptionsBuilder.prototype.props = [
@@ -2290,7 +2790,15 @@ Nicholas McCready - https://twitter.com/nmccready
           }
         ];
 
-        CommonOptionsBuilder.prototype.buildOpts = function(customOpts, forEachOpts) {
+        CommonOptionsBuilder.prototype.getCorrectModel = function(scope) {
+          if (angular.isDefined(scope != null ? scope.model : void 0)) {
+            return scope.model;
+          } else {
+            return scope;
+          }
+        };
+
+        CommonOptionsBuilder.prototype.buildOpts = function(customOpts, cachedEval, forEachOpts) {
           var model, opts, stroke;
           if (customOpts == null) {
             customOpts = {};
@@ -2302,14 +2810,14 @@ Nicholas McCready - https://twitter.com/nmccready
             $log.error('this.scope not defined in CommonOptionsBuilder can not buildOpts');
             return;
           }
-          if (!this.map) {
+          if (!this.gMap) {
             $log.error('this.map not defined in CommonOptionsBuilder can not buildOpts');
             return;
           }
-          model = this.hasModel ? this.scope.model : this.scope;
+          model = this.getCorrectModel(this.scope);
           stroke = this.scopeOrModelVal('stroke', this.scope, model);
           opts = angular.extend(customOpts, this.DEFAULTS, {
-            map: this.map,
+            map: this.gMap,
             strokeColor: stroke != null ? stroke.color : void 0,
             strokeOpacity: stroke != null ? stroke.opacity : void 0,
             strokeWeight: stroke != null ? stroke.weight : void 0
@@ -2326,7 +2834,7 @@ Nicholas McCready - https://twitter.com/nmccready
           }), (function(_this) {
             return function(defaultValue, key) {
               var val;
-              val = _this.scopeOrModelVal(key, _this.scope, model);
+              val = cachedEval ? cachedEval[key] : _this.scopeOrModelVal(key, _this.scope, model);
               if (angular.isUndefined(val)) {
                 return opts[key] = defaultValue;
               } else {
@@ -2365,23 +2873,23 @@ Nicholas McCready - https://twitter.com/nmccready
 
 }).call(this);
 ;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api.options.builders').factory('uiGmapPolylineOptionsBuilder', [
     'uiGmapCommonOptionsBuilder', function(CommonOptionsBuilder) {
       var PolylineOptionsBuilder;
-      return PolylineOptionsBuilder = (function(_super) {
-        __extends(PolylineOptionsBuilder, _super);
+      return PolylineOptionsBuilder = (function(superClass) {
+        extend(PolylineOptionsBuilder, superClass);
 
         function PolylineOptionsBuilder() {
           return PolylineOptionsBuilder.__super__.constructor.apply(this, arguments);
         }
 
-        PolylineOptionsBuilder.prototype.buildOpts = function(pathPoints) {
+        PolylineOptionsBuilder.prototype.buildOpts = function(pathPoints, cachedEval) {
           return PolylineOptionsBuilder.__super__.buildOpts.call(this, {
             path: pathPoints
-          }, {
+          }, cachedEval, {
             geodesic: false
           });
         };
@@ -2393,22 +2901,22 @@ Nicholas McCready - https://twitter.com/nmccready
   ]).factory('uiGmapShapeOptionsBuilder', [
     'uiGmapCommonOptionsBuilder', function(CommonOptionsBuilder) {
       var ShapeOptionsBuilder;
-      return ShapeOptionsBuilder = (function(_super) {
-        __extends(ShapeOptionsBuilder, _super);
+      return ShapeOptionsBuilder = (function(superClass) {
+        extend(ShapeOptionsBuilder, superClass);
 
         function ShapeOptionsBuilder() {
           return ShapeOptionsBuilder.__super__.constructor.apply(this, arguments);
         }
 
-        ShapeOptionsBuilder.prototype.buildOpts = function(customOpts, forEachOpts) {
+        ShapeOptionsBuilder.prototype.buildOpts = function(customOpts, cachedEval, forEachOpts) {
           var fill, model;
-          model = this.hasModel ? this.scope.model : this.scope;
-          fill = this.scopeOrModelVal('fill', this.scope, model);
+          model = this.getCorrectModel(this.scope);
+          fill = cachedEval ? cachedEval['fill'] : this.scopeOrModelVal('fill', this.scope, model);
           customOpts = angular.extend(customOpts, {
             fillColor: fill != null ? fill.color : void 0,
             fillOpacity: fill != null ? fill.opacity : void 0
           });
-          return ShapeOptionsBuilder.__super__.buildOpts.call(this, customOpts, forEachOpts);
+          return ShapeOptionsBuilder.__super__.buildOpts.call(this, customOpts, cachedEval, forEachOpts);
         };
 
         return ShapeOptionsBuilder;
@@ -2418,17 +2926,17 @@ Nicholas McCready - https://twitter.com/nmccready
   ]).factory('uiGmapPolygonOptionsBuilder', [
     'uiGmapShapeOptionsBuilder', function(ShapeOptionsBuilder) {
       var PolygonOptionsBuilder;
-      return PolygonOptionsBuilder = (function(_super) {
-        __extends(PolygonOptionsBuilder, _super);
+      return PolygonOptionsBuilder = (function(superClass) {
+        extend(PolygonOptionsBuilder, superClass);
 
         function PolygonOptionsBuilder() {
           return PolygonOptionsBuilder.__super__.constructor.apply(this, arguments);
         }
 
-        PolygonOptionsBuilder.prototype.buildOpts = function(pathPoints) {
+        PolygonOptionsBuilder.prototype.buildOpts = function(pathPoints, cachedEval) {
           return PolygonOptionsBuilder.__super__.buildOpts.call(this, {
             path: pathPoints
-          }, {
+          }, cachedEval, {
             geodesic: false
           });
         };
@@ -2440,17 +2948,17 @@ Nicholas McCready - https://twitter.com/nmccready
   ]).factory('uiGmapRectangleOptionsBuilder', [
     'uiGmapShapeOptionsBuilder', function(ShapeOptionsBuilder) {
       var RectangleOptionsBuilder;
-      return RectangleOptionsBuilder = (function(_super) {
-        __extends(RectangleOptionsBuilder, _super);
+      return RectangleOptionsBuilder = (function(superClass) {
+        extend(RectangleOptionsBuilder, superClass);
 
         function RectangleOptionsBuilder() {
           return RectangleOptionsBuilder.__super__.constructor.apply(this, arguments);
         }
 
-        RectangleOptionsBuilder.prototype.buildOpts = function(bounds) {
+        RectangleOptionsBuilder.prototype.buildOpts = function(bounds, cachedEval) {
           return RectangleOptionsBuilder.__super__.buildOpts.call(this, {
             bounds: bounds
-          });
+          }, cachedEval);
         };
 
         return RectangleOptionsBuilder;
@@ -2460,18 +2968,18 @@ Nicholas McCready - https://twitter.com/nmccready
   ]).factory('uiGmapCircleOptionsBuilder', [
     'uiGmapShapeOptionsBuilder', function(ShapeOptionsBuilder) {
       var CircleOptionsBuilder;
-      return CircleOptionsBuilder = (function(_super) {
-        __extends(CircleOptionsBuilder, _super);
+      return CircleOptionsBuilder = (function(superClass) {
+        extend(CircleOptionsBuilder, superClass);
 
         function CircleOptionsBuilder() {
           return CircleOptionsBuilder.__super__.constructor.apply(this, arguments);
         }
 
-        CircleOptionsBuilder.prototype.buildOpts = function(center, radius) {
+        CircleOptionsBuilder.prototype.buildOpts = function(center, radius, cachedEval) {
           return CircleOptionsBuilder.__super__.buildOpts.call(this, {
             center: center,
             radius: radius
-          });
+          }, cachedEval);
         };
 
         return CircleOptionsBuilder;
@@ -2505,42 +3013,40 @@ Nicholas McCready - https://twitter.com/nmccready
           return opts;
         },
         isLabel: function(options) {
-          if ((options.labelContent != null) || (options.labelAnchor != null) || (options.labelClass != null) || (options.labelStyle != null) || (options.labelVisible != null)) {
-            return true;
-          } else {
+          if (options == null) {
             return false;
           }
+          return (options.labelContent != null) || (options.labelAnchor != null) || (options.labelClass != null) || (options.labelStyle != null) || (options.labelVisible != null);
         }
       });
     }
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global _,angular */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapBasePolyChildModel', [
     'uiGmapLogger', '$timeout', 'uiGmaparray-sync', 'uiGmapGmapUtil', 'uiGmapEventsHelper', function($log, $timeout, arraySync, GmapUtil, EventsHelper) {
       return function(Builder, gFactory) {
         var BasePolyChildModel;
-        return BasePolyChildModel = (function(_super) {
-          __extends(BasePolyChildModel, _super);
+        return BasePolyChildModel = (function(superClass) {
+          extend(BasePolyChildModel, superClass);
 
           BasePolyChildModel.include(GmapUtil);
 
-          BasePolyChildModel.include(EventsHelper);
-
-          function BasePolyChildModel(scope, attrs, map, defaults, model) {
-            var create;
-            this.scope = scope;
-            this.attrs = attrs;
-            this.map = map;
-            this.defaults = defaults;
-            this.model = model;
-            this.clean = __bind(this.clean, this);
-            this.clonedModel = _.clone(this.model, true);
+          function BasePolyChildModel(arg) {
+            var create, gObjectChangeCb, ref;
+            this.scope = arg.scope, this.attrs = arg.attrs, this.gMap = arg.gMap, this.defaults = arg.defaults, this.model = arg.model, gObjectChangeCb = arg.gObjectChangeCb, this.isScopeModel = (ref = arg.isScopeModel) != null ? ref : false;
+            this.clean = bind(this.clean, this);
+            if (this.isScopeModel) {
+              this.clonedModel = _.clone(this.model, true);
+            }
             this.isDragging = false;
             this.internalEvents = {
               dragend: (function(_this) {
@@ -2558,173 +3064,173 @@ Nicholas McCready - https://twitter.com/nmccready
             };
             create = (function(_this) {
               return function() {
-                var pathPoints;
+                var maybeCachedEval;
                 if (_this.isDragging) {
                   return;
                 }
-                pathPoints = _this.convertPathPoints(_this.scope.path);
-                if (_this.shape != null) {
+                _this.pathPoints = _this.convertPathPoints(_this.scope.path);
+                if (_this.gObject != null) {
                   _this.clean();
                 }
-                if (pathPoints.length > 0) {
-                  _this.shape = gFactory(_this.buildOpts(pathPoints));
+                if (_this.scope.model != null) {
+                  maybeCachedEval = _this.scope;
                 }
-                if (_this.shape) {
-                  if (_this.scope.fit) {
-                    _this.extendMapBounds(map, pathPoints);
-                  }
-                  arraySync(_this.shape.getPath(), _this.scope, 'path', function(pathPoints) {
-                    if (_this.scope.fit) {
-                      return _this.extendMapBounds(map, pathPoints);
+                if (_this.pathPoints.length > 0) {
+                  _this.gObject = gFactory(_this.buildOpts(_this.pathPoints, maybeCachedEval));
+                }
+                if (_this.gObject) {
+                  arraySync(_this.gObject.getPath(), _this.scope, 'path', function(pathPoints) {
+                    _this.pathPoints = pathPoints;
+                    if (gObjectChangeCb != null) {
+                      return gObjectChangeCb();
                     }
                   });
-                  _this.listeners = _this.model ? _this.setEvents(_this.shape, _this.scope, _this.model) : _this.setEvents(_this.shape, _this.scope, _this.scope);
-                  return _this.internalListeners = _this.model ? _this.setEvents(_this.shape, {
+                  if (angular.isDefined(_this.scope.events) && angular.isObject(_this.scope.events)) {
+                    _this.listeners = _this.model ? EventsHelper.setEvents(_this.gObject, _this.scope, _this.model) : EventsHelper.setEvents(_this.gObject, _this.scope, _this.scope);
+                  }
+                  return _this.internalListeners = _this.model ? EventsHelper.setEvents(_this.gObject, {
                     events: _this.internalEvents
-                  }, _this.model) : _this.setEvents(_this.shape, {
+                  }, _this.model) : EventsHelper.setEvents(_this.gObject, {
                     events: _this.internalEvents
                   }, _this.scope);
                 }
               };
             })(this);
             create();
-            scope.$watch('path', (function(_this) {
+            this.scope.$watch('path', (function(_this) {
               return function(newValue, oldValue) {
-                if (!_.isEqual(newValue, oldValue) || !_this.shape) {
+                if (!_.isEqual(newValue, oldValue) || !_this.gObject) {
                   return create();
                 }
               };
             })(this), true);
-            if (!scope["static"] && angular.isDefined(scope.editable)) {
-              scope.$watch('editable', (function(_this) {
+            if (!this.scope["static"] && angular.isDefined(this.scope.editable)) {
+              this.scope.$watch('editable', (function(_this) {
                 return function(newValue, oldValue) {
-                  var _ref;
+                  var ref1;
                   if (newValue !== oldValue) {
                     newValue = !_this.isFalse(newValue);
-                    return (_ref = _this.shape) != null ? _ref.setEditable(newValue) : void 0;
+                    return (ref1 = _this.gObject) != null ? ref1.setEditable(newValue) : void 0;
                   }
                 };
               })(this), true);
             }
-            if (angular.isDefined(scope.draggable)) {
-              scope.$watch('draggable', (function(_this) {
+            if (angular.isDefined(this.scope.draggable)) {
+              this.scope.$watch('draggable', (function(_this) {
                 return function(newValue, oldValue) {
-                  var _ref;
+                  var ref1;
                   if (newValue !== oldValue) {
                     newValue = !_this.isFalse(newValue);
-                    return (_ref = _this.shape) != null ? _ref.setDraggable(newValue) : void 0;
+                    return (ref1 = _this.gObject) != null ? ref1.setDraggable(newValue) : void 0;
                   }
                 };
               })(this), true);
             }
-            if (angular.isDefined(scope.visible)) {
-              scope.$watch('visible', (function(_this) {
+            if (angular.isDefined(this.scope.visible)) {
+              this.scope.$watch('visible', (function(_this) {
                 return function(newValue, oldValue) {
-                  var _ref;
+                  var ref1;
                   if (newValue !== oldValue) {
                     newValue = !_this.isFalse(newValue);
                   }
-                  return (_ref = _this.shape) != null ? _ref.setVisible(newValue) : void 0;
+                  return (ref1 = _this.gObject) != null ? ref1.setVisible(newValue) : void 0;
                 };
               })(this), true);
             }
-            if (angular.isDefined(scope.geodesic)) {
-              scope.$watch('geodesic', (function(_this) {
+            if (angular.isDefined(this.scope.geodesic)) {
+              this.scope.$watch('geodesic', (function(_this) {
                 return function(newValue, oldValue) {
-                  var _ref;
+                  var ref1;
                   if (newValue !== oldValue) {
                     newValue = !_this.isFalse(newValue);
-                    return (_ref = _this.shape) != null ? _ref.setOptions(_this.buildOpts(_this.shape.getPath())) : void 0;
+                    return (ref1 = _this.gObject) != null ? ref1.setOptions(_this.buildOpts(_this.gObject.getPath())) : void 0;
                   }
                 };
               })(this), true);
             }
-            if (angular.isDefined(scope.stroke) && angular.isDefined(scope.stroke.weight)) {
-              scope.$watch('stroke.weight', (function(_this) {
+            if (angular.isDefined(this.scope.stroke) && angular.isDefined(this.scope.stroke.weight)) {
+              this.scope.$watch('stroke.weight', (function(_this) {
                 return function(newValue, oldValue) {
-                  var _ref;
+                  var ref1;
                   if (newValue !== oldValue) {
-                    return (_ref = _this.shape) != null ? _ref.setOptions(_this.buildOpts(_this.shape.getPath())) : void 0;
+                    return (ref1 = _this.gObject) != null ? ref1.setOptions(_this.buildOpts(_this.gObject.getPath())) : void 0;
                   }
                 };
               })(this), true);
             }
-            if (angular.isDefined(scope.stroke) && angular.isDefined(scope.stroke.color)) {
-              scope.$watch('stroke.color', (function(_this) {
+            if (angular.isDefined(this.scope.stroke) && angular.isDefined(this.scope.stroke.color)) {
+              this.scope.$watch('stroke.color', (function(_this) {
                 return function(newValue, oldValue) {
-                  var _ref;
+                  var ref1;
                   if (newValue !== oldValue) {
-                    return (_ref = _this.shape) != null ? _ref.setOptions(_this.buildOpts(_this.shape.getPath())) : void 0;
+                    return (ref1 = _this.gObject) != null ? ref1.setOptions(_this.buildOpts(_this.gObject.getPath())) : void 0;
                   }
                 };
               })(this), true);
             }
-            if (angular.isDefined(scope.stroke) && angular.isDefined(scope.stroke.opacity)) {
-              scope.$watch('stroke.opacity', (function(_this) {
+            if (angular.isDefined(this.scope.stroke) && angular.isDefined(this.scope.stroke.opacity)) {
+              this.scope.$watch('stroke.opacity', (function(_this) {
                 return function(newValue, oldValue) {
-                  var _ref;
+                  var ref1;
                   if (newValue !== oldValue) {
-                    return (_ref = _this.shape) != null ? _ref.setOptions(_this.buildOpts(_this.shape.getPath())) : void 0;
+                    return (ref1 = _this.gObject) != null ? ref1.setOptions(_this.buildOpts(_this.gObject.getPath())) : void 0;
                   }
                 };
               })(this), true);
             }
-            if (angular.isDefined(scope.icons)) {
-              scope.$watch('icons', (function(_this) {
+            if (angular.isDefined(this.scope.icons)) {
+              this.scope.$watch('icons', (function(_this) {
                 return function(newValue, oldValue) {
-                  var _ref;
+                  var ref1;
                   if (newValue !== oldValue) {
-                    return (_ref = _this.shape) != null ? _ref.setOptions(_this.buildOpts(_this.shape.getPath())) : void 0;
+                    return (ref1 = _this.gObject) != null ? ref1.setOptions(_this.buildOpts(_this.gObject.getPath())) : void 0;
                   }
                 };
               })(this), true);
             }
-            scope.$on('$destroy', (function(_this) {
+            this.scope.$on('$destroy', (function(_this) {
               return function() {
                 _this.clean();
                 return _this.scope = null;
               };
             })(this));
-            if (angular.isDefined(scope.fill) && angular.isDefined(scope.fill.color)) {
-              scope.$watch('fill.color', (function(_this) {
+            if (angular.isDefined(this.scope.fill) && angular.isDefined(this.scope.fill.color)) {
+              this.scope.$watch('fill.color', (function(_this) {
                 return function(newValue, oldValue) {
                   if (newValue !== oldValue) {
-                    return _this.shape.setOptions(_this.buildOpts(_this.shape.getPath()));
+                    return _this.gObject.setOptions(_this.buildOpts(_this.gObject.getPath()));
                   }
                 };
               })(this));
             }
-            if (angular.isDefined(scope.fill) && angular.isDefined(scope.fill.opacity)) {
-              scope.$watch('fill.opacity', (function(_this) {
+            if (angular.isDefined(this.scope.fill) && angular.isDefined(this.scope.fill.opacity)) {
+              this.scope.$watch('fill.opacity', (function(_this) {
                 return function(newValue, oldValue) {
                   if (newValue !== oldValue) {
-                    return _this.shape.setOptions(_this.buildOpts(_this.shape.getPath()));
+                    return _this.gObject.setOptions(_this.buildOpts(_this.gObject.getPath()));
                   }
                 };
               })(this));
             }
-            if (angular.isDefined(scope.zIndex)) {
-              scope.$watch('zIndex', (function(_this) {
+            if (angular.isDefined(this.scope.zIndex)) {
+              this.scope.$watch('zIndex', (function(_this) {
                 return function(newValue, oldValue) {
                   if (newValue !== oldValue) {
-                    return _this.shape.setOptions(_this.buildOpts(_this.shape.getPath()));
+                    return _this.gObject.setOptions(_this.buildOpts(_this.gObject.getPath()));
                   }
                 };
               })(this));
-            }
-            if (angular.isDefined(scope.events) && scope.events !== null && angular.isObject(scope.events)) {
-              this.listeners = EventsHelper.setEvents(this.shape, scope, scope);
             }
           }
 
           BasePolyChildModel.prototype.clean = function() {
-            var _ref;
-            this.removeEvents(this.listeners);
-            this.removeEvents(this.internalListeners);
-            if ((_ref = this.shape) != null) {
-              _ref.setMap(null);
+            var ref;
+            EventsHelper.removeEvents(this.listeners);
+            EventsHelper.removeEvents(this.internalListeners);
+            if ((ref = this.gObject) != null) {
+              ref.setMap(null);
             }
-            return this.shape = null;
+            return this.gObject = null;
           };
 
           return BasePolyChildModel;
@@ -2747,7 +3253,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   angular.module('uiGmapgoogle-maps.directives.api.models.child').factory('uiGmapDrawFreeHandChildModel', [
     'uiGmapLogger', '$q', function($log, $q) {
       var drawFreeHand, freeHandMgr;
-      drawFreeHand = function(map, polys, enable) {
+      drawFreeHand = function(map, polys, done) {
         var move, poly;
         poly = new google.maps.Polyline({
           map: map,
@@ -2767,53 +3273,51 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           }));
           poly = null;
           google.maps.event.clearListeners(map.getDiv(), 'mousedown');
-          return enable();
+          return done();
         });
         return void 0;
       };
-      freeHandMgr = function(map, defaultOptions) {
-        var disableMap, enable;
-        this.map = map;
-        if (!defaultOptions) {
-          defaultOptions = {
-            draggable: true,
-            zoomControl: true,
-            scrollwheel: true,
-            disableDoubleClickZoom: true
-          };
-        }
-        enable = (function(_this) {
-          return function() {
-            var _ref;
-            if ((_ref = _this.deferred) != null) {
-              _ref.resolve();
-            }
-            return _.defer(function() {
-              return _this.map.setOptions(_.extend(_this.oldOptions, defaultOptions));
-            });
-          };
-        })(this);
+      freeHandMgr = function(map1, scope) {
+        var disableMap, enableMap;
+        this.map = map1;
         disableMap = (function(_this) {
           return function() {
-            $log.info('disabling map move');
-            _this.oldOptions = map.getOptions();
-            _this.oldOptions.center = map.getCenter();
-            return _this.map.setOptions({
+            var mapOptions;
+            mapOptions = {
               draggable: false,
-              zoomControl: false,
+              disableDefaultUI: true,
               scrollwheel: false,
               disableDoubleClickZoom: false
+            };
+            $log.info('disabling map move');
+            return _this.map.setOptions(mapOptions);
+          };
+        })(this);
+        enableMap = (function(_this) {
+          return function() {
+            var mapOptions, ref;
+            mapOptions = {
+              draggable: true,
+              disableDefaultUI: false,
+              scrollwheel: true,
+              disableDoubleClickZoom: true
+            };
+            if ((ref = _this.deferred) != null) {
+              ref.resolve();
+            }
+            return _.defer(function() {
+              return _this.map.setOptions(_.extend(mapOptions, scope.options));
             });
           };
         })(this);
         this.engage = (function(_this) {
-          return function(polys) {
-            _this.polys = polys;
+          return function(polys1) {
+            _this.polys = polys1;
             _this.deferred = $q.defer();
             disableMap();
             $log.info('DrawFreeHandChildModel is engaged (drawing).');
             google.maps.event.addDomListener(_this.map.getDiv(), 'mousedown', function(e) {
-              return drawFreeHand(_this.map, _this.polys, enable);
+              return drawFreeHand(_this.map, _this.polys, enableMap);
             });
             return _this.deferred.promise;
           };
@@ -2825,19 +3329,21 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global _:true,angular:true,google:true, RichMarker:true */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api.models.child').factory('uiGmapMarkerChildModel', [
     'uiGmapModelKey', 'uiGmapGmapUtil', 'uiGmapLogger', 'uiGmapEventsHelper', 'uiGmapPropertyAction', 'uiGmapMarkerOptions', 'uiGmapIMarker', 'uiGmapMarkerManager', 'uiGmapPromise', function(ModelKey, GmapUtil, $log, EventsHelper, PropertyAction, MarkerOptions, IMarker, MarkerManager, uiGmapPromise) {
-      var MarkerChildModel, keys;
-      keys = ['coords', 'icon', 'options', 'fit'];
-      MarkerChildModel = (function(_super) {
+      var MarkerChildModel;
+      MarkerChildModel = (function(superClass) {
         var destroy;
 
-        __extends(MarkerChildModel, _super);
+        extend(MarkerChildModel, superClass);
 
         MarkerChildModel.include(GmapUtil);
 
@@ -2846,47 +3352,45 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         MarkerChildModel.include(MarkerOptions);
 
         destroy = function(child) {
-          if ((child != null ? child.gMarker : void 0) != null) {
+          if ((child != null ? child.gObject : void 0) != null) {
             child.removeEvents(child.externalListeners);
             child.removeEvents(child.internalListeners);
-            if (child != null ? child.gMarker : void 0) {
+            if (child != null ? child.gObject : void 0) {
               if (child.removeFromManager) {
-                child.gMarkerManager.remove(child.gMarker);
+                child.gManager.remove(child.gObject);
               }
-              child.gMarker.setMap(null);
-              return child.gMarker = null;
+              child.gObject.setMap(null);
+              return child.gObject = null;
             }
           }
         };
 
-        function MarkerChildModel(scope, model, keys, gMap, defaults, doClick, gMarkerManager, doDrawSelf, trackModel, needRedraw) {
-          var action;
-          this.model = model;
-          this.keys = keys;
-          this.gMap = gMap;
-          this.defaults = defaults;
-          this.doClick = doClick;
-          this.gMarkerManager = gMarkerManager;
-          this.doDrawSelf = doDrawSelf != null ? doDrawSelf : true;
-          this.trackModel = trackModel != null ? trackModel : true;
-          this.needRedraw = needRedraw != null ? needRedraw : false;
-          this.internalEvents = __bind(this.internalEvents, this);
-          this.setLabelOptions = __bind(this.setLabelOptions, this);
-          this.setOptions = __bind(this.setOptions, this);
-          this.setIcon = __bind(this.setIcon, this);
-          this.setCoords = __bind(this.setCoords, this);
-          this.isNotValid = __bind(this.isNotValid, this);
-          this.maybeSetScopeValue = __bind(this.maybeSetScopeValue, this);
-          this.createMarker = __bind(this.createMarker, this);
-          this.setMyScope = __bind(this.setMyScope, this);
-          this.updateModel = __bind(this.updateModel, this);
-          this.handleModelChanges = __bind(this.handleModelChanges, this);
-          this.destroy = __bind(this.destroy, this);
-          this.clonedModel = _.clone(this.model, true);
+        function MarkerChildModel(opts) {
+          this.internalEvents = bind(this.internalEvents, this);
+          this.setLabelOptions = bind(this.setLabelOptions, this);
+          this.setOptions = bind(this.setOptions, this);
+          this.setIcon = bind(this.setIcon, this);
+          this.setCoords = bind(this.setCoords, this);
+          this.isNotValid = bind(this.isNotValid, this);
+          this.maybeSetScopeValue = bind(this.maybeSetScopeValue, this);
+          this.createMarker = bind(this.createMarker, this);
+          this.setMyScope = bind(this.setMyScope, this);
+          this.updateModel = bind(this.updateModel, this);
+          this.handleModelChanges = bind(this.handleModelChanges, this);
+          this.destroy = bind(this.destroy, this);
+          var action, ref, ref1, ref2, ref3, ref4, scope;
+          scope = opts.scope, this.model = opts.model, this.keys = opts.keys, this.gMap = opts.gMap, this.defaults = (ref = opts.defaults) != null ? ref : {}, this.doClick = opts.doClick, this.gManager = opts.gManager, this.doDrawSelf = (ref1 = opts.doDrawSelf) != null ? ref1 : true, this.trackModel = (ref2 = opts.trackModel) != null ? ref2 : true, this.needRedraw = (ref3 = opts.needRedraw) != null ? ref3 : false, this.isScopeModel = (ref4 = opts.isScopeModel) != null ? ref4 : false;
+          if (this.isScopeModel) {
+            this.clonedModel = _.clone(this.model, true);
+          }
           this.deferred = uiGmapPromise.defer();
           _.each(this.keys, (function(_this) {
             return function(v, k) {
-              return _this[k + 'Key'] = _.isFunction(_this.keys[k]) ? _this.keys[k]() : _this.keys[k];
+              var keyValue;
+              keyValue = _this.keys[k];
+              if ((keyValue != null) && !_.isFunction(keyValue) && _.isString(keyValue)) {
+                return _this[k + 'Key'] = keyValue;
+              }
             };
           })(this));
           this.idKey = this.idKeyKey || 'id';
@@ -2896,7 +3400,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           MarkerChildModel.__super__.constructor.call(this, scope);
           this.scope.getGMarker = (function(_this) {
             return function() {
-              return _this.gMarker;
+              return _this.gObject;
             };
           })(this);
           this.firstTime = true;
@@ -2911,14 +3415,17 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             })(this), true);
           } else {
             action = new PropertyAction((function(_this) {
-              return function(calledKey, newVal) {
+              return function(calledKey) {
+                if (_.isFunction(calledKey)) {
+                  calledKey = 'all';
+                }
                 if (!_this.firstTime) {
                   return _this.setMyScope(calledKey, scope);
                 }
               };
             })(this), false);
             _.each(this.keys, function(v, k) {
-              return scope.$watch(k, action.sic, true);
+              return scope.$watch(k, action.sic(k), true);
             });
           }
           this.scope.$on('$destroy', (function(_this) {
@@ -2957,16 +3464,21 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         };
 
         MarkerChildModel.prototype.updateModel = function(model) {
-          this.cloneModel = _.clone(model, true);
+          if (this.isScopeModel) {
+            this.clonedModel = _.clone(model, true);
+          }
           return this.setMyScope('all', model, this.model);
         };
 
         MarkerChildModel.prototype.renderGMarker = function(doDraw, validCb) {
-          var coords;
+          var coords, isSpiderfied, ref;
           if (doDraw == null) {
             doDraw = true;
           }
-          coords = this.getProp(this.coordsKey, this.model);
+          coords = this.getProp('coords', this.scope, this.model);
+          if (((ref = this.gManager) != null ? ref.isSpiderfied : void 0) != null) {
+            isSpiderfied = this.gManager.isSpiderfied();
+          }
           if (coords != null) {
             if (!this.validateCoords(coords)) {
               $log.debug('MarkerChild does not have coords yet. They may be defined later.');
@@ -2975,12 +3487,15 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             if (validCb != null) {
               validCb();
             }
-            if (doDraw && this.gMarker) {
-              return this.gMarkerManager.add(this.gMarker);
+            if (doDraw && this.gObject) {
+              this.gManager.add(this.gObject);
+            }
+            if (isSpiderfied) {
+              return this.gManager.markerSpiderfier.spiderListener(this.gObject, window.event);
             }
           } else {
-            if (doDraw && this.gMarker) {
-              return this.gMarkerManager.remove(this.gMarker);
+            if (doDraw && this.gObject) {
+              return this.gManager.remove(this.gObject);
             }
           }
         };
@@ -3001,7 +3516,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           } else {
             this.model = model;
           }
-          if (!this.gMarker) {
+          if (!this.gObject) {
             this.setOptions(this.scope, doDraw);
             justCreated = true;
           }
@@ -3013,9 +3528,15 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
                 };
               })(this));
             case 'icon':
-              return this.maybeSetScopeValue('icon', model, oldModel, this.iconKey, this.evalModelHandle, isInit, this.setIcon, doDraw);
+              return this.maybeSetScopeValue({
+                gSetter: this.setIcon,
+                doDraw: doDraw
+              });
             case 'coords':
-              return this.maybeSetScopeValue('coords', model, oldModel, this.coordsKey, this.evalModelHandle, isInit, this.setCoords, doDraw);
+              return this.maybeSetScopeValue({
+                gSetter: this.setCoords,
+                doDraw: doDraw
+              });
             case 'options':
               if (!justCreated) {
                 return this.createMarker(model, oldModel, isInit, doDraw);
@@ -3033,22 +3554,21 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           if (doDraw == null) {
             doDraw = true;
           }
-          this.maybeSetScopeValue('options', model, oldModel, this.optionsKey, this.evalModelHandle, isInit, this.setOptions, doDraw);
+          this.maybeSetScopeValue({
+            gSetter: this.setOptions,
+            doDraw: doDraw
+          });
           return this.firstTime = false;
         };
 
-        MarkerChildModel.prototype.maybeSetScopeValue = function(scopePropName, model, oldModel, modelKey, evaluate, isInit, gSetter, doDraw) {
-          if (gSetter == null) {
-            gSetter = void 0;
-          }
-          if (doDraw == null) {
-            doDraw = true;
-          }
+        MarkerChildModel.prototype.maybeSetScopeValue = function(arg) {
+          var doDraw, gSetter, ref;
+          gSetter = arg.gSetter, doDraw = (ref = arg.doDraw) != null ? ref : true;
           if (gSetter != null) {
             gSetter(this.scope, doDraw);
           }
           if (this.doDrawSelf && doDraw) {
-            return this.gMarkerManager.draw();
+            return this.gManager.draw();
           }
         };
 
@@ -3057,7 +3577,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           if (doCheckGmarker == null) {
             doCheckGmarker = true;
           }
-          hasNoGmarker = !doCheckGmarker ? false : this.gMarker === void 0;
+          hasNoGmarker = !doCheckGmarker ? false : this.gObject === void 0;
           hasIdenticalScopes = !this.trackModel ? scope.$id !== this.scope.$id : false;
           return hasIdenticalScopes || hasNoGmarker;
         };
@@ -3066,22 +3586,22 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           if (doDraw == null) {
             doDraw = true;
           }
-          if (this.isNotValid(scope) || (this.gMarker == null)) {
+          if (this.isNotValid(scope) || (this.gObject == null)) {
             return;
           }
           return this.renderGMarker(doDraw, (function(_this) {
             return function() {
               var newGValue, newModelVal, oldGValue;
-              newModelVal = _this.getProp(_this.coordsKey, _this.model);
+              newModelVal = _this.getProp('coords', scope, _this.model);
               newGValue = _this.getCoords(newModelVal);
-              oldGValue = _this.gMarker.getPosition();
+              oldGValue = _this.gObject.getPosition();
               if ((oldGValue != null) && (newGValue != null)) {
                 if (newGValue.lng() === oldGValue.lng() && newGValue.lat() === oldGValue.lat()) {
                   return;
                 }
               }
-              _this.gMarker.setPosition(newGValue);
-              return _this.gMarker.setVisible(_this.validateCoords(newModelVal));
+              _this.gObject.setPosition(newGValue);
+              return _this.gObject.setVisible(_this.validateCoords(newModelVal));
             };
           })(this));
         };
@@ -3090,27 +3610,27 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           if (doDraw == null) {
             doDraw = true;
           }
-          if (this.isNotValid(scope) || (this.gMarker == null)) {
+          if (this.isNotValid(scope) || (this.gObject == null)) {
             return;
           }
           return this.renderGMarker(doDraw, (function(_this) {
             return function() {
               var coords, newValue, oldValue;
-              oldValue = _this.gMarker.getIcon();
-              newValue = _this.getProp('icon', _this.model);
+              oldValue = _this.gObject.getIcon();
+              newValue = _this.getProp('icon', scope, _this.model);
               if (oldValue === newValue) {
                 return;
               }
-              _this.gMarker.setIcon(newValue);
-              coords = _this.getProp('coords', _this.model);
-              _this.gMarker.setPosition(_this.getCoords(coords));
-              return _this.gMarker.setVisible(_this.validateCoords(coords));
+              _this.gObject.setIcon(newValue);
+              coords = _this.getProp('coords', scope, _this.model);
+              _this.gObject.setPosition(_this.getCoords(coords));
+              return _this.gObject.setVisible(_this.validateCoords(coords));
             };
           })(this));
         };
 
         MarkerChildModel.prototype.setOptions = function(scope, doDraw) {
-          var _ref;
+          var ref;
           if (doDraw == null) {
             doDraw = true;
           }
@@ -3119,21 +3639,29 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           }
           this.renderGMarker(doDraw, (function(_this) {
             return function() {
-              var coords, icon, _options;
-              coords = _this.getProp(_this.coordsKey, _this.model);
-              icon = _this.getProp(_this.iconKey, _this.model);
-              _options = _this.getProp(_this.optionsKey, _this.model);
+              var _options, coords, icon;
+              coords = _this.getProp('coords', scope, _this.model);
+              icon = _this.getProp('icon', scope, _this.model);
+              _options = _this.getProp('options', scope, _this.model);
               _this.opts = _this.createOptions(coords, icon, _options);
-              if (_this.gMarker != null) {
-                _this.gMarker.setOptions(_this.opts);
+              if (_this.isLabel(_this.gObject) !== _this.isLabel(_this.opts) && (_this.gObject != null)) {
+                _this.gManager.remove(_this.gObject);
+                _this.gObject = void 0;
               }
-              if (!_this.gMarker) {
+              if (_this.gObject != null) {
+                _this.gObject.setOptions(_this.setLabelOptions(_this.opts));
+              }
+              if (!_this.gObject) {
                 if (_this.isLabel(_this.opts)) {
-                  _this.gMarker = new MarkerWithLabel(_this.setLabelOptions(_this.opts));
+                  _this.gObject = new MarkerWithLabel(_this.setLabelOptions(_this.opts));
+                } else if (_this.opts.content) {
+                  _this.gObject = new RichMarker(_this.opts);
+                  _this.gObject.getIcon = _this.gObject.getContent;
+                  _this.gObject.setIcon = _this.gObject.setContent;
                 } else {
-                  _this.gMarker = new google.maps.Marker(_this.opts);
+                  _this.gObject = new google.maps.Marker(_this.opts);
                 }
-                _.extend(_this.gMarker, {
+                _.extend(_this.gObject, {
                   model: _this.model
                 });
               }
@@ -3143,34 +3671,36 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
               if (_this.internalListeners) {
                 _this.removeEvents(_this.internalListeners);
               }
-              _this.externalListeners = _this.setEvents(_this.gMarker, _this.scope, _this.model, ['dragend']);
-              _this.internalListeners = _this.setEvents(_this.gMarker, {
+              _this.externalListeners = _this.setEvents(_this.gObject, _this.scope, _this.model, ['dragend']);
+              _this.internalListeners = _this.setEvents(_this.gObject, {
                 events: _this.internalEvents(),
                 $evalAsync: function() {}
               }, _this.model);
               if (_this.id != null) {
-                return _this.gMarker.key = _this.id;
+                return _this.gObject.key = _this.id;
               }
             };
           })(this));
-          if (this.gMarker && (this.gMarker.getMap() || this.gMarkerManager.type !== MarkerManager.type)) {
-            this.deferred.resolve(this.gMarker);
+          if (this.gObject && (this.gObject.getMap() || this.gManager.type !== MarkerManager.type)) {
+            this.deferred.resolve(this.gObject);
           } else {
-            if (!this.gMarker) {
-              return this.deferred.reject('gMarker is null');
+            if (!this.gObject) {
+              return this.deferred.reject('gObject is null');
             }
-            if (!(((_ref = this.gMarker) != null ? _ref.getMap() : void 0) && this.gMarkerManager.type === MarkerManager.type)) {
-              $log.debug('gMarker has no map yet');
-              this.deferred.resolve(this.gMarker);
+            if (!(((ref = this.gObject) != null ? ref.getMap() : void 0) && this.gManager.type === MarkerManager.type)) {
+              $log.debug('gObject has no map yet');
+              this.deferred.resolve(this.gObject);
             }
           }
           if (this.model[this.fitKey]) {
-            return this.gMarkerManager.fit();
+            return this.gManager.fit();
           }
         };
 
         MarkerChildModel.prototype.setLabelOptions = function(opts) {
-          opts.labelAnchor = this.getLabelPositionPoint(opts.labelAnchor);
+          if (opts.labelAnchor) {
+            opts.labelAnchor = this.getLabelPositionPoint(opts.labelAnchor);
+          }
           return opts;
         };
 
@@ -3180,7 +3710,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
               return function(marker, eventName, model, mousearg) {
                 var events, modelToSet, newCoords;
                 modelToSet = _this.trackModel ? _this.scope.model : _this.model;
-                newCoords = _this.setCoordsFromEvent(_this.modelOrKey(modelToSet, _this.coordsKey), _this.gMarker.getPosition());
+                newCoords = _this.setCoordsFromEvent(_this.modelOrKey(modelToSet, _this.coordsKey), _this.gObject.getPosition());
                 modelToSet = _this.setVal(model, _this.coordsKey, newCoords);
                 events = _this.scope.events;
                 if ((events != null ? events.dragend : void 0) != null) {
@@ -3192,8 +3722,8 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             click: (function(_this) {
               return function(marker, eventName, model, mousearg) {
                 var click;
-                click = _.isFunction(_this.clickKey) ? _this.clickKey : _this.getProp(_this.clickKey, _this.model);
-                if (_this.doClick && (click != null)) {
+                click = _this.getProp('click', _this.scope, _this.model);
+                if (_this.doClick && angular.isFunction(click)) {
                   return _this.scope.$evalAsync(click(marker, eventName, _this.model, mousearg));
                 }
               };
@@ -3210,8 +3740,8 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapPolygonChildModel', [
     'uiGmapBasePolyChildModel', 'uiGmapPolygonOptionsBuilder', function(BaseGen, Builder) {
@@ -3220,8 +3750,8 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         return new google.maps.Polygon(opts);
       };
       base = new BaseGen(Builder, gFactory);
-      return PolygonChildModel = (function(_super) {
-        __extends(PolygonChildModel, _super);
+      return PolygonChildModel = (function(superClass) {
+        extend(PolygonChildModel, superClass);
 
         function PolygonChildModel() {
           return PolygonChildModel.__super__.constructor.apply(this, arguments);
@@ -3235,8 +3765,8 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapPolylineChildModel', [
     'uiGmapBasePolyChildModel', 'uiGmapPolylineOptionsBuilder', function(BaseGen, Builder) {
@@ -3245,8 +3775,8 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         return new google.maps.Polyline(opts);
       };
       base = BaseGen(Builder, gFactory);
-      return PolylineChildModel = (function(_super) {
-        __extends(PolylineChildModel, _super);
+      return PolylineChildModel = (function(superClass) {
+        extend(PolylineChildModel, superClass);
 
         function PolylineChildModel() {
           return PolylineChildModel.__super__.constructor.apply(this, arguments);
@@ -3259,49 +3789,47 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global _:true,angular:true,google:true */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api.models.child').factory('uiGmapWindowChildModel', [
     'uiGmapBaseObject', 'uiGmapGmapUtil', 'uiGmapLogger', '$compile', '$http', '$templateCache', 'uiGmapChromeFixes', 'uiGmapEventsHelper', function(BaseObject, GmapUtil, $log, $compile, $http, $templateCache, ChromeFixes, EventsHelper) {
       var WindowChildModel;
-      WindowChildModel = (function(_super) {
-        __extends(WindowChildModel, _super);
+      WindowChildModel = (function(superClass) {
+        extend(WindowChildModel, superClass);
 
         WindowChildModel.include(GmapUtil);
 
         WindowChildModel.include(EventsHelper);
 
-        function WindowChildModel(model, scope, opts, isIconVisibleOnClick, mapCtrl, markerScope, element, needToManualDestroy, markerIsVisibleAfterWindowClose) {
-          var maybeMarker;
-          this.model = model;
-          this.scope = scope;
-          this.opts = opts;
-          this.isIconVisibleOnClick = isIconVisibleOnClick;
-          this.mapCtrl = mapCtrl;
-          this.markerScope = markerScope;
-          this.element = element;
-          this.needToManualDestroy = needToManualDestroy != null ? needToManualDestroy : false;
-          this.markerIsVisibleAfterWindowClose = markerIsVisibleAfterWindowClose != null ? markerIsVisibleAfterWindowClose : true;
-          this.destroy = __bind(this.destroy, this);
-          this.remove = __bind(this.remove, this);
-          this.getLatestPosition = __bind(this.getLatestPosition, this);
-          this.hideWindow = __bind(this.hideWindow, this);
-          this.showWindow = __bind(this.showWindow, this);
-          this.handleClick = __bind(this.handleClick, this);
-          this.watchOptions = __bind(this.watchOptions, this);
-          this.watchCoords = __bind(this.watchCoords, this);
-          this.createGWin = __bind(this.createGWin, this);
-          this.watchElement = __bind(this.watchElement, this);
-          this.watchAndDoShow = __bind(this.watchAndDoShow, this);
-          this.doShow = __bind(this.doShow, this);
-          this.clonedModel = _.clone(this.model, true);
+        function WindowChildModel(opts) {
+          this.updateModel = bind(this.updateModel, this);
+          this.destroy = bind(this.destroy, this);
+          this.remove = bind(this.remove, this);
+          this.getLatestPosition = bind(this.getLatestPosition, this);
+          this.hideWindow = bind(this.hideWindow, this);
+          this.showWindow = bind(this.showWindow, this);
+          this.handleClick = bind(this.handleClick, this);
+          this.watchOptions = bind(this.watchOptions, this);
+          this.watchCoords = bind(this.watchCoords, this);
+          this.createGWin = bind(this.createGWin, this);
+          this.watchElement = bind(this.watchElement, this);
+          this.watchAndDoShow = bind(this.watchAndDoShow, this);
+          this.doShow = bind(this.doShow, this);
+          var maybeMarker, ref, ref1, ref2, ref3;
+          this.model = (ref = opts.model) != null ? ref : {}, this.scope = opts.scope, this.opts = opts.opts, this.isIconVisibleOnClick = opts.isIconVisibleOnClick, this.gMap = opts.gMap, this.markerScope = opts.markerScope, this.element = opts.element, this.needToManualDestroy = (ref1 = opts.needToManualDestroy) != null ? ref1 : false, this.markerIsVisibleAfterWindowClose = (ref2 = opts.markerIsVisibleAfterWindowClose) != null ? ref2 : true, this.isScopeModel = (ref3 = opts.isScopeModel) != null ? ref3 : false;
+          if (this.isScopeModel) {
+            this.clonedModel = _.clone(this.model, true);
+          }
           this.getGmarker = function() {
-            var _ref, _ref1;
-            if (((_ref = this.markerScope) != null ? _ref['getGMarker'] : void 0) != null) {
-              return (_ref1 = this.markerScope) != null ? _ref1.getGMarker() : void 0;
+            var ref4, ref5;
+            if (((ref4 = this.markerScope) != null ? ref4['getGMarker'] : void 0) != null) {
+              return (ref5 = this.markerScope) != null ? ref5.getGMarker() : void 0;
             }
           };
           this.listeners = [];
@@ -3322,8 +3850,8 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           $log.info(this);
         }
 
-        WindowChildModel.prototype.doShow = function() {
-          if (this.scope.show) {
+        WindowChildModel.prototype.doShow = function(wasOpen) {
+          if (this.scope.show === true || wasOpen) {
             return this.showWindow();
           } else {
             return this.hideWindow();
@@ -3341,15 +3869,15 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         WindowChildModel.prototype.watchElement = function() {
           return this.scope.$watch((function(_this) {
             return function() {
-              var wasOpen, _ref;
+              var ref, wasOpen;
               if (!(_this.element || _this.html)) {
                 return;
               }
-              if (_this.html !== _this.element.html() && _this.gWin) {
-                if ((_ref = _this.opts) != null) {
-                  _ref.content = void 0;
+              if (_this.html !== _this.element.html() && _this.gObject) {
+                if ((ref = _this.opts) != null) {
+                  ref.content = void 0;
                 }
-                wasOpen = _this.gWin.isOpen();
+                wasOpen = _this.gObject.isOpen();
                 _this.remove();
                 return _this.createGWin(wasOpen);
               }
@@ -3358,56 +3886,57 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         };
 
         WindowChildModel.prototype.createGWin = function(isOpen) {
-          var defaults, maybeMarker, _opts, _ref, _ref1;
+          var _opts, defaults, maybeMarker, ref, ref1;
           if (isOpen == null) {
             isOpen = false;
           }
           maybeMarker = this.getGmarker();
-          if (this.gWin == null) {
-            defaults = {};
-            if (this.opts != null) {
-              if (this.scope.coords) {
-                this.opts.position = this.getCoords(this.scope.coords);
-              }
-              defaults = this.opts;
+          defaults = {};
+          if (this.opts != null) {
+            if (this.scope.coords) {
+              this.opts.position = this.getCoords(this.scope.coords);
             }
-            if (this.element) {
-              this.html = _.isObject(this.element) ? this.element.html() : this.element;
-            }
-            _opts = this.scope.options ? this.scope.options : defaults;
-            this.opts = this.createWindowOptions(maybeMarker, this.markerScope || this.scope, this.html, _opts);
+            defaults = this.opts;
           }
-          if ((this.opts != null) && !this.gWin) {
-            if (this.opts.boxClass && (window.InfoBox && typeof window.InfoBox === 'function')) {
-              this.gWin = new window.InfoBox(this.opts);
-            } else {
-              this.gWin = new google.maps.InfoWindow(this.opts);
-            }
-            this.handleClick(((_ref = this.scope) != null ? (_ref1 = _ref.options) != null ? _ref1.forceClick : void 0 : void 0) || isOpen);
-            this.doShow();
-            this.listeners.push(google.maps.event.addListener(this.gWin, 'domready', function() {
-              return ChromeFixes.maybeRepaint(this.content);
-            }));
-            return this.listeners.push(google.maps.event.addListener(this.gWin, 'closeclick', (function(_this) {
-              return function() {
-                if (maybeMarker) {
-                  maybeMarker.setAnimation(_this.oldMarkerAnimation);
-                  if (_this.markerIsVisibleAfterWindowClose) {
-                    _.delay(function() {
-                      maybeMarker.setVisible(false);
-                      return maybeMarker.setVisible(_this.markerIsVisibleAfterWindowClose);
-                    }, 250);
+          if (this.element) {
+            this.html = _.isObject(this.element) ? this.element.html() : this.element;
+          }
+          _opts = this.scope.options ? this.scope.options : defaults;
+          this.opts = this.createWindowOptions(maybeMarker, this.markerScope || this.scope, this.html, _opts);
+          if (this.opts != null) {
+            if (!this.gObject) {
+              if (this.opts.boxClass && (window.InfoBox && typeof window.InfoBox === 'function')) {
+                this.gObject = new window.InfoBox(this.opts);
+              } else {
+                this.gObject = new google.maps.InfoWindow(this.opts);
+              }
+              this.listeners.push(google.maps.event.addListener(this.gObject, 'domready', function() {
+                return ChromeFixes.maybeRepaint(this.content);
+              }));
+              this.listeners.push(google.maps.event.addListener(this.gObject, 'closeclick', (function(_this) {
+                return function() {
+                  if (maybeMarker) {
+                    maybeMarker.setAnimation(_this.oldMarkerAnimation);
+                    if (_this.markerIsVisibleAfterWindowClose) {
+                      _.delay(function() {
+                        maybeMarker.setVisible(false);
+                        return maybeMarker.setVisible(_this.markerIsVisibleAfterWindowClose);
+                      }, 250);
+                    }
                   }
-                }
-                _this.gWin.close();
-                _this.model.show = false;
-                if (_this.scope.closeClick != null) {
-                  return _this.scope.$evalAsync(_this.scope.closeClick());
-                } else {
-                  return _this.scope.$evalAsync();
-                }
-              };
-            })(this)));
+                  _this.gObject.close();
+                  _this.model.show = false;
+                  if (_this.scope.closeClick != null) {
+                    return _this.scope.$evalAsync(_this.scope.closeClick());
+                  } else {
+                    return _this.scope.$evalAsync();
+                  }
+                };
+              })(this)));
+            }
+            this.gObject.setContent(this.opts.content);
+            this.handleClick(((ref = this.scope) != null ? (ref1 = ref.options) != null ? ref1.forceClick : void 0 : void 0) || isOpen);
+            return this.doShow(this.gObject.isOpen());
           }
         };
 
@@ -3425,7 +3954,8 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
                   return;
                 }
                 pos = _this.getCoords(newValue);
-                _this.gWin.setPosition(pos);
+                _this.doShow();
+                _this.gObject.setPosition(pos);
                 if (_this.opts) {
                   return _this.opts.position = pos;
                 }
@@ -3439,8 +3969,8 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             return function(newValue, oldValue) {
               if (newValue !== oldValue) {
                 _this.opts = newValue;
-                if (_this.gWin != null) {
-                  _this.gWin.setOptions(_this.opts);
+                if (_this.gObject != null) {
+                  _this.gObject.setOptions(_this.opts);
                   if ((_this.opts.visible != null) && _this.opts.visible) {
                     return _this.showWindow();
                   } else if (_this.opts.visible != null) {
@@ -3454,13 +3984,13 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
         WindowChildModel.prototype.handleClick = function(forceClick) {
           var click, maybeMarker;
-          if (this.gWin == null) {
+          if (this.gObject == null) {
             return;
           }
           maybeMarker = this.getGmarker();
           click = (function(_this) {
             return function() {
-              if (_this.gWin == null) {
+              if (_this.gObject == null) {
                 _this.createGWin();
               }
               _this.showWindow();
@@ -3485,72 +4015,77 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
         WindowChildModel.prototype.showWindow = function() {
           var compiled, show, templateScope;
-          if (this.gWin != null) {
-            show = (function(_this) {
-              return function() {
-                var isOpen, maybeMarker, pos;
-                if (!_this.gWin.isOpen()) {
-                  maybeMarker = _this.getGmarker();
-                  if ((_this.gWin != null) && (_this.gWin.getPosition != null)) {
-                    pos = _this.gWin.getPosition();
-                  }
-                  if (maybeMarker) {
-                    pos = maybeMarker.getPosition();
-                  }
-                  if (!pos) {
-                    return;
-                  }
-                  _this.gWin.open(_this.mapCtrl, maybeMarker);
-                  isOpen = _this.gWin.isOpen();
-                  if (_this.model.show !== isOpen) {
-                    return _this.model.show = isOpen;
-                  }
-                }
-              };
-            })(this);
-            if (this.scope.templateUrl) {
-              return $http.get(this.scope.templateUrl, {
-                cache: $templateCache
-              }).then((function(_this) {
-                return function(content) {
-                  var compiled, templateScope;
-                  templateScope = _this.scope.$new();
-                  if (angular.isDefined(_this.scope.templateParameter)) {
-                    templateScope.parameter = _this.scope.templateParameter;
-                  }
-                  compiled = $compile(content.data)(templateScope);
-                  _this.gWin.setContent(compiled[0]);
-                  return show();
-                };
-              })(this));
-            } else if (this.scope.template) {
-              templateScope = this.scope.$new();
-              if (angular.isDefined(this.scope.templateParameter)) {
-                templateScope.parameter = this.scope.templateParameter;
-              }
-              compiled = $compile(this.scope.template)(templateScope);
-              this.gWin.setContent(compiled[0]);
-              return show();
-            } else {
-              return show();
-            }
+          if (this.gObject == null) {
+            return;
           }
+          templateScope = null;
+          show = (function(_this) {
+            return function() {
+              var isOpen, maybeMarker, pos;
+              if (!_this.gObject.isOpen()) {
+                maybeMarker = _this.getGmarker();
+                if ((_this.gObject != null) && (_this.gObject.getPosition != null)) {
+                  pos = _this.gObject.getPosition();
+                }
+                if (maybeMarker) {
+                  pos = maybeMarker.getPosition();
+                }
+                if (!pos) {
+                  return;
+                }
+                _this.gObject.open(_this.gMap, maybeMarker);
+                isOpen = _this.gObject.isOpen();
+                if (_this.model.show !== isOpen) {
+                  return _this.model.show = isOpen;
+                }
+              }
+            };
+          })(this);
+          if (this.scope.templateUrl) {
+            $http.get(this.scope.templateUrl, {
+              cache: $templateCache
+            }).then((function(_this) {
+              return function(content) {
+                var compiled;
+                templateScope = _this.scope.$new();
+                if (angular.isDefined(_this.scope.templateParameter)) {
+                  templateScope.parameter = _this.scope.templateParameter;
+                }
+                compiled = $compile(content.data)(templateScope);
+                _this.gObject.setContent(compiled[0]);
+                return show();
+              };
+            })(this));
+          } else if (this.scope.template) {
+            templateScope = this.scope.$new();
+            if (angular.isDefined(this.scope.templateParameter)) {
+              templateScope.parameter = this.scope.templateParameter;
+            }
+            compiled = $compile(this.scope.template)(templateScope);
+            this.gObject.setContent(compiled[0]);
+            show();
+          } else {
+            show();
+          }
+          return this.scope.$on('destroy', function() {
+            return templateScope.$destroy();
+          });
         };
 
         WindowChildModel.prototype.hideWindow = function() {
-          if ((this.gWin != null) && this.gWin.isOpen()) {
-            return this.gWin.close();
+          if ((this.gObject != null) && this.gObject.isOpen()) {
+            return this.gObject.close();
           }
         };
 
         WindowChildModel.prototype.getLatestPosition = function(overridePos) {
           var maybeMarker;
           maybeMarker = this.getGmarker();
-          if ((this.gWin != null) && (maybeMarker != null) && !overridePos) {
-            return this.gWin.setPosition(maybeMarker.getPosition());
+          if ((this.gObject != null) && (maybeMarker != null) && !overridePos) {
+            return this.gObject.setPosition(maybeMarker.getPosition());
           } else {
             if (overridePos) {
-              return this.gWin.setPosition(overridePos);
+              return this.gObject.setPosition(overridePos);
             }
           }
         };
@@ -3559,19 +4094,26 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           this.hideWindow();
           this.removeEvents(this.listeners);
           this.listeners.length = 0;
-          delete this.gWin;
+          delete this.gObject;
           return delete this.opts;
         };
 
         WindowChildModel.prototype.destroy = function(manualOverride) {
-          var _ref;
+          var ref;
           if (manualOverride == null) {
             manualOverride = false;
           }
           this.remove();
-          if ((this.scope != null) && !((_ref = this.scope) != null ? _ref.$$destroyed : void 0) && (this.needToManualDestroy || manualOverride)) {
+          if (((this.scope != null) && !((ref = this.scope) != null ? ref.$$destroyed : void 0)) && (this.needToManualDestroy || manualOverride)) {
             return this.scope.$destroy();
           }
+        };
+
+        WindowChildModel.prototype.updateModel = function(model) {
+          if (this.isScopeModel) {
+            this.clonedModel = _.clone(model, true);
+          }
+          return _.extend(this.model, this.clonedModel || model);
         };
 
         return WindowChildModel;
@@ -3582,31 +4124,330 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global _, angular */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
+
+  angular.module('uiGmapgoogle-maps.directives.api.models.parent').factory('uiGmapBasePolysParentModel', [
+    '$timeout', 'uiGmapLogger', 'uiGmapModelKey', 'uiGmapModelsWatcher', 'uiGmapPropMap', 'uiGmap_async', 'uiGmapPromise', 'uiGmapFitHelper', function($timeout, $log, ModelKey, ModelsWatcher, PropMap, _async, uiGmapPromise, FitHelper) {
+      return function(IPoly, PolyChildModel, gObjectName) {
+        var BasePolysParentModel;
+        return BasePolysParentModel = (function(superClass) {
+          extend(BasePolysParentModel, superClass);
+
+          BasePolysParentModel.include(ModelsWatcher);
+
+          function BasePolysParentModel(scope, element, attrs, gMap1, defaults) {
+            this.element = element;
+            this.attrs = attrs;
+            this.gMap = gMap1;
+            this.defaults = defaults;
+            this.maybeFit = bind(this.maybeFit, this);
+            this.createChild = bind(this.createChild, this);
+            this.pieceMeal = bind(this.pieceMeal, this);
+            this.createAllNew = bind(this.createAllNew, this);
+            this.watchIdKey = bind(this.watchIdKey, this);
+            this.createChildScopes = bind(this.createChildScopes, this);
+            this.watchDestroy = bind(this.watchDestroy, this);
+            this.onDestroy = bind(this.onDestroy, this);
+            this.rebuildAll = bind(this.rebuildAll, this);
+            this.doINeedToWipe = bind(this.doINeedToWipe, this);
+            this.watchModels = bind(this.watchModels, this);
+            BasePolysParentModel.__super__.constructor.call(this, scope);
+            this["interface"] = IPoly;
+            this.$log = $log;
+            this.plurals = new PropMap();
+            _.each(IPoly.scopeKeys, (function(_this) {
+              return function(name) {
+                return _this[name + 'Key'] = void 0;
+              };
+            })(this));
+            this.models = void 0;
+            this.firstTime = true;
+            this.$log.info(this);
+            this.createChildScopes();
+          }
+
+          BasePolysParentModel.prototype.watchModels = function(scope) {
+
+            /*
+              This was watchCollection but not all model changes were being caught.
+              TODO: Make the directive flexible in overriding whether we watch models (and depth) via watch or watchColleciton.
+             */
+            return scope.$watch('models', (function(_this) {
+              return function(newValue, oldValue) {
+                if (newValue !== oldValue) {
+                  if (_this.doINeedToWipe(newValue) || scope.doRebuildAll) {
+                    return _this.rebuildAll(scope, true, true);
+                  } else {
+                    return _this.createChildScopes(false);
+                  }
+                }
+              };
+            })(this), true);
+          };
+
+          BasePolysParentModel.prototype.doINeedToWipe = function(newValue) {
+            var newValueIsEmpty;
+            newValueIsEmpty = newValue != null ? newValue.length === 0 : true;
+            return this.plurals.length > 0 && newValueIsEmpty;
+          };
+
+          BasePolysParentModel.prototype.rebuildAll = function(scope, doCreate, doDelete) {
+            return this.onDestroy(doDelete).then((function(_this) {
+              return function() {
+                if (doCreate) {
+                  return _this.createChildScopes();
+                }
+              };
+            })(this));
+          };
+
+          BasePolysParentModel.prototype.onDestroy = function() {
+            BasePolysParentModel.__super__.onDestroy.call(this, this.scope);
+            return _async.promiseLock(this, uiGmapPromise.promiseTypes["delete"], void 0, void 0, (function(_this) {
+              return function() {
+                return _async.each(_this.plurals.values(), function(child) {
+                  return child.destroy(true);
+                }, _async.chunkSizeFrom(_this.scope.cleanchunk, false)).then(function() {
+                  var ref;
+                  return (ref = _this.plurals) != null ? ref.removeAll() : void 0;
+                });
+              };
+            })(this));
+          };
+
+          BasePolysParentModel.prototype.watchDestroy = function(scope) {
+            return scope.$on('$destroy', (function(_this) {
+              return function() {
+                return _this.rebuildAll(scope, false, true);
+              };
+            })(this));
+          };
+
+          BasePolysParentModel.prototype.createChildScopes = function(isCreatingFromScratch) {
+            if (isCreatingFromScratch == null) {
+              isCreatingFromScratch = true;
+            }
+            if (angular.isUndefined(this.scope.models)) {
+              this.$log.error("No models to create " + gObjectName + "s from! I Need direct models!");
+              return;
+            }
+            if ((this.gMap == null) || (this.scope.models == null)) {
+              return;
+            }
+            this.watchIdKey(this.scope);
+            if (isCreatingFromScratch) {
+              return this.createAllNew(this.scope, false);
+            } else {
+              return this.pieceMeal(this.scope, false);
+            }
+          };
+
+          BasePolysParentModel.prototype.watchIdKey = function(scope) {
+            this.setIdKey(scope);
+            return scope.$watch('idKey', (function(_this) {
+              return function(newValue, oldValue) {
+                if (newValue !== oldValue && (newValue == null)) {
+                  _this.idKey = newValue;
+                  return _this.rebuildAll(scope, true, true);
+                }
+              };
+            })(this));
+          };
+
+          BasePolysParentModel.prototype.createAllNew = function(scope, isArray) {
+            var maybeCanceled;
+            if (isArray == null) {
+              isArray = false;
+            }
+            this.models = scope.models;
+            if (this.firstTime) {
+              this.watchModels(scope);
+              this.watchDestroy(scope);
+            }
+            if (this.didQueueInitPromise(this, scope)) {
+              return;
+            }
+            maybeCanceled = null;
+            return _async.promiseLock(this, uiGmapPromise.promiseTypes.create, 'createAllNew', (function(canceledMsg) {
+              return maybeCanceled = canceledMsg;
+            }), (function(_this) {
+              return function() {
+                return _async.map(scope.models, function(model) {
+                  var child;
+                  child = _this.createChild(model, _this.gMap);
+                  if (maybeCanceled) {
+                    $log.debug('createNew should fall through safely');
+                    child.isEnabled = false;
+                  }
+                  maybeCanceled;
+                  return child.pathPoints.getArray();
+                }, _async.chunkSizeFrom(scope.chunk)).then(function(pathPoints) {
+                  _this.maybeFit(pathPoints);
+                  return _this.firstTime = false;
+                });
+              };
+            })(this));
+          };
+
+          BasePolysParentModel.prototype.pieceMeal = function(scope, isArray) {
+            var maybeCanceled, payload;
+            if (isArray == null) {
+              isArray = true;
+            }
+            if (scope.$$destroyed) {
+              return;
+            }
+            maybeCanceled = null;
+            payload = null;
+            this.models = scope.models;
+            if ((scope != null) && this.modelsLength() && this.plurals.length) {
+              return _async.promiseLock(this, uiGmapPromise.promiseTypes.update, 'pieceMeal', (function(canceledMsg) {
+                return maybeCanceled = canceledMsg;
+              }), (function(_this) {
+                return function() {
+                  return uiGmapPromise.promise(function() {
+                    return _this.figureOutState(_this.idKey, scope, _this.plurals, _this.modelKeyComparison);
+                  }).then(function(state) {
+                    payload = state;
+                    if (payload.updates.length) {
+                      _async.each(payload.updates, function(obj) {
+                        _.extend(obj.child.scope, obj.model);
+                        return obj.child.model = obj.model;
+                      });
+                    }
+                    return _async.each(payload.removals, function(child) {
+                      if (child != null) {
+                        child.destroy();
+                        _this.plurals.remove(child.model[_this.idKey]);
+                        return maybeCanceled;
+                      }
+                    }, _async.chunkSizeFrom(scope.chunk));
+                  }).then(function() {
+                    return _async.each(payload.adds, function(modelToAdd) {
+                      if (maybeCanceled) {
+                        $log.debug('pieceMeal should fall through safely');
+                      }
+                      _this.createChild(modelToAdd, _this.gMap);
+                      return maybeCanceled;
+                    }, _async.chunkSizeFrom(scope.chunk)).then(function() {
+                      return _this.maybeFit();
+                    });
+                  });
+                };
+              })(this));
+            } else {
+              this.inProgress = false;
+              return this.rebuildAll(this.scope, true, true);
+            }
+          };
+
+          BasePolysParentModel.prototype.createChild = function(model, gMap) {
+            var child, childScope;
+            childScope = this.scope.$new(false);
+            this.setChildScope(IPoly.scopeKeys, childScope, model);
+            childScope.$watch('model', (function(_this) {
+              return function(newValue, oldValue) {
+                if (newValue !== oldValue) {
+                  return _this.setChildScope(childScope, newValue);
+                }
+              };
+            })(this), true);
+            childScope["static"] = this.scope["static"];
+            child = new PolyChildModel({
+              isScopeModel: true,
+              scope: childScope,
+              attrs: this.attrs,
+              gMap: gMap,
+              defaults: this.defaults,
+              model: model,
+              gObjectChangeCb: (function(_this) {
+                return function() {
+                  return _this.maybeFit();
+                };
+              })(this)
+            });
+            if (model[this.idKey] == null) {
+              this.$log.error(gObjectName + " model has no id to assign a child to.\nThis is required for performance. Please assign id,\nor redirect id to a different key.");
+              return;
+            }
+            this.plurals.put(model[this.idKey], child);
+            return child;
+          };
+
+          BasePolysParentModel.prototype.maybeFit = function(pathPoints) {
+            if (pathPoints == null) {
+              pathPoints = this.plurals.map(function(p) {
+                return p.pathPoints;
+              });
+            }
+            if (this.scope.fit) {
+              pathPoints = _.flatten(pathPoints);
+              return FitHelper.fit(pathPoints, this.gMap);
+            }
+          };
+
+          return BasePolysParentModel;
+
+        })(ModelKey);
+      };
+    }
+  ]);
+
+}).call(this);
+;
+/*globals angular, _, google */
+
+(function() {
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api.models.parent').factory('uiGmapCircleParentModel', [
     'uiGmapLogger', '$timeout', 'uiGmapGmapUtil', 'uiGmapEventsHelper', 'uiGmapCircleOptionsBuilder', function($log, $timeout, GmapUtil, EventsHelper, Builder) {
-      var CircleParentModel;
-      return CircleParentModel = (function(_super) {
-        __extends(CircleParentModel, _super);
+      var CircleParentModel, _settingFromDirective;
+      _settingFromDirective = function(scope, fn) {
+        scope.settingFromDirective = true;
+        fn();
+        return $timeout(function() {
+          return scope.settingFromDirective = false;
+        });
+      };
+      return CircleParentModel = (function(superClass) {
+        extend(CircleParentModel, superClass);
 
         CircleParentModel.include(GmapUtil);
 
         CircleParentModel.include(EventsHelper);
 
-        function CircleParentModel(scope, element, attrs, map, DEFAULTS) {
-          var circle, listeners;
-          this.scope = scope;
+        function CircleParentModel(scope, element, attrs, gMap, DEFAULTS) {
+          var clean, gObject, lastRadius;
           this.attrs = attrs;
-          this.map = map;
+          this.gMap = gMap;
           this.DEFAULTS = DEFAULTS;
-          circle = new google.maps.Circle(this.buildOpts(GmapUtil.getCoords(scope.center), scope.radius));
+          this.scope = scope;
+          lastRadius = null;
+          clean = (function(_this) {
+            return function() {
+              lastRadius = null;
+              if (_this.listeners != null) {
+                _this.removeEvents(_this.listeners);
+                return _this.listeners = void 0;
+              }
+            };
+          })(this);
+          gObject = new google.maps.Circle(this.buildOpts(GmapUtil.getCoords(scope.center), scope.radius));
           this.setMyOptions = (function(_this) {
             return function(newVals, oldVals) {
-              if (!_.isEqual(newVals, oldVals)) {
-                return circle.setOptions(_this.buildOpts(GmapUtil.getCoords(scope.center), scope.radius));
+              if (scope.settingFromDirective) {
+                return;
+              }
+              if (!(_.isEqual(newVals, oldVals) && newVals === oldVals && ((newVals != null) && (oldVals != null) ? newVals.coordinates === oldVals.coordinates : true))) {
+                return gObject.setOptions(_this.buildOpts(GmapUtil.getCoords(scope.center), scope.radius));
               }
             };
           })(this);
@@ -3617,32 +4458,65 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             }, {
               prop: 'fill',
               isColl: true
-            }, 'radius'
+            }, 'radius', 'zIndex'
           ]);
           this.watchProps();
-          listeners = this.setEvents(circle, scope, scope);
-          google.maps.event.addListener(circle, 'radius_changed', function() {
-            return scope.$evalAsync(function() {
-              return scope.radius = circle.getRadius();
-            });
-          });
-          google.maps.event.addListener(circle, 'center_changed', function() {
-            return scope.$evalAsync(function() {
-              if (angular.isDefined(scope.center.type)) {
-                scope.center.coordinates[1] = circle.getCenter().lat();
-                return scope.center.coordinates[0] = circle.getCenter().lng();
-              } else {
-                scope.center.latitude = circle.getCenter().lat();
-                return scope.center.longitude = circle.getCenter().lng();
-              }
-            });
-          });
-          scope.$on('$destroy', (function(_this) {
-            return function() {
-              _this.removeEvents(listeners);
-              return circle.setMap(null);
+          if (this.scope.control != null) {
+            this.scope.control.getCircle = function() {
+              return gObject;
             };
-          })(this));
+          }
+          clean();
+          this.listeners = this.setEvents(gObject, scope, scope, ['radius_changed']) || [];
+          this.listeners.push(google.maps.event.addListener(gObject, 'radius_changed', function() {
+
+            /*
+              possible google bug, and or because a circle has two radii
+              radius_changed appears to fire twice (original and new) which is not too helpful
+              therefore we will check for radius changes manually and bail out if nothing has changed
+             */
+            var newRadius, work;
+            newRadius = gObject.getRadius();
+            if (newRadius === lastRadius) {
+              return;
+            }
+            lastRadius = newRadius;
+            work = function() {
+              return _settingFromDirective(scope, function() {
+                var ref, ref1;
+                if (newRadius !== scope.radius) {
+                  scope.radius = newRadius;
+                }
+                if (((ref = scope.events) != null ? ref.radius_changed : void 0) && _.isFunction((ref1 = scope.events) != null ? ref1.radius_changed : void 0)) {
+                  return scope.events.radius_changed(gObject, 'radius_changed', scope, arguments);
+                }
+              });
+            };
+            if (!angular.mock) {
+              return scope.$evalAsync(function() {
+                return work();
+              });
+            } else {
+              return work();
+            }
+          }));
+          this.listeners.push(google.maps.event.addListener(gObject, 'center_changed', function() {
+            return scope.$evalAsync(function() {
+              return _settingFromDirective(scope, function() {
+                if (angular.isDefined(scope.center.type)) {
+                  scope.center.coordinates[1] = gObject.getCenter().lat();
+                  return scope.center.coordinates[0] = gObject.getCenter().lng();
+                } else {
+                  scope.center.latitude = gObject.getCenter().lat();
+                  return scope.center.longitude = gObject.getCenter().lng();
+                }
+              });
+            });
+          }));
+          scope.$on('$destroy', function() {
+            clean();
+            return gObject.setMap(null);
+          });
           $log.info(this);
         }
 
@@ -3654,55 +4528,55 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api.models.parent').factory('uiGmapDrawingManagerParentModel', [
     'uiGmapLogger', '$timeout', 'uiGmapBaseObject', 'uiGmapEventsHelper', function($log, $timeout, BaseObject, EventsHelper) {
       var DrawingManagerParentModel;
-      return DrawingManagerParentModel = (function(_super) {
-        __extends(DrawingManagerParentModel, _super);
+      return DrawingManagerParentModel = (function(superClass) {
+        extend(DrawingManagerParentModel, superClass);
 
         DrawingManagerParentModel.include(EventsHelper);
 
         function DrawingManagerParentModel(scope, element, attrs, map) {
-          var drawingManager, listeners;
+          var gObject, listeners;
           this.scope = scope;
           this.attrs = attrs;
           this.map = map;
-          drawingManager = new google.maps.drawing.DrawingManager(this.scope.options);
-          drawingManager.setMap(this.map);
+          gObject = new google.maps.drawing.DrawingManager(this.scope.options);
+          gObject.setMap(this.map);
           listeners = void 0;
           if (this.scope.control != null) {
             this.scope.control.getDrawingManager = function() {
-              return drawingManager;
+              return gObject;
             };
           }
           if (!this.scope["static"] && this.scope.options) {
             this.scope.$watch('options', function(newValue) {
-              return drawingManager != null ? drawingManager.setOptions(newValue) : void 0;
+              return gObject != null ? gObject.setOptions(newValue) : void 0;
             }, true);
           }
           if (this.scope.events != null) {
-            listeners = this.setEvents(drawingManager, this.scope, this.scope);
-            scope.$watch('events', (function(_this) {
+            listeners = this.setEvents(gObject, this.scope, this.scope);
+            this.scope.$watch('events', (function(_this) {
               return function(newValue, oldValue) {
                 if (!_.isEqual(newValue, oldValue)) {
                   if (listeners != null) {
                     _this.removeEvents(listeners);
                   }
-                  return listeners = _this.setEvents(drawingManager, _this.scope, _this.scope);
+                  return listeners = _this.setEvents(gObject, _this.scope, _this.scope);
                 }
               };
             })(this));
           }
-          scope.$on('$destroy', (function(_this) {
+          this.scope.$on('$destroy', (function(_this) {
             return function() {
               if (listeners != null) {
                 _this.removeEvents(listeners);
               }
-              drawingManager.setMap(null);
-              return drawingManager = null;
+              gObject.setMap(null);
+              return gObject = null;
             };
           })(this));
         }
@@ -3725,42 +4599,41 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
  */
 
 (function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module("uiGmapgoogle-maps.directives.api.models.parent").factory("uiGmapIMarkerParentModel", [
     "uiGmapModelKey", "uiGmapLogger", function(ModelKey, Logger) {
       var IMarkerParentModel;
-      IMarkerParentModel = (function(_super) {
-        __extends(IMarkerParentModel, _super);
+      IMarkerParentModel = (function(superClass) {
+        extend(IMarkerParentModel, superClass);
 
         IMarkerParentModel.prototype.DEFAULTS = {};
 
-        function IMarkerParentModel(scope, element, attrs, map) {
-          this.scope = scope;
+        function IMarkerParentModel(scope1, element, attrs, map) {
+          this.scope = scope1;
           this.element = element;
           this.attrs = attrs;
           this.map = map;
-          this.onDestroy = __bind(this.onDestroy, this);
-          this.onWatch = __bind(this.onWatch, this);
-          this.watch = __bind(this.watch, this);
-          this.validateScope = __bind(this.validateScope, this);
+          this.onWatch = bind(this.onWatch, this);
+          this.watch = bind(this.watch, this);
+          this.validateScope = bind(this.validateScope, this);
           IMarkerParentModel.__super__.constructor.call(this, this.scope);
           this.$log = Logger;
-          if (!this.validateScope(scope)) {
+          if (!this.validateScope(this.scope)) {
             throw new String("Unable to construct IMarkerParentModel due to invalid scope");
           }
-          this.doClick = angular.isDefined(attrs.click);
-          if (scope.options != null) {
-            this.DEFAULTS = scope.options;
+          this.doClick = angular.isDefined(this.attrs.click);
+          if (this.scope.options != null) {
+            this.DEFAULTS = this.scope.options;
           }
           this.watch('coords', this.scope);
           this.watch('icon', this.scope);
           this.watch('options', this.scope);
-          scope.$on("$destroy", (function(_this) {
+          this.scope.$on("$destroy", (function(_this) {
             return function() {
-              return _this.onDestroy(scope);
+              return _this.onDestroy(_this.scope);
             };
           })(this));
         }
@@ -3794,10 +4667,6 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
         IMarkerParentModel.prototype.onWatch = function(propNameToWatch, scope, newValue, oldValue) {};
 
-        IMarkerParentModel.prototype.onDestroy = function(scope) {
-          throw new String("OnDestroy Not Implemented!!");
-        };
-
         return IMarkerParentModel;
 
       })(ModelKey);
@@ -3807,14 +4676,14 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module("uiGmapgoogle-maps.directives.api.models.parent").factory("uiGmapIWindowParentModel", [
     "uiGmapModelKey", "uiGmapGmapUtil", "uiGmapLogger", function(ModelKey, GmapUtil, Logger) {
       var IWindowParentModel;
-      return IWindowParentModel = (function(_super) {
-        __extends(IWindowParentModel, _super);
+      return IWindowParentModel = (function(superClass) {
+        extend(IWindowParentModel, superClass);
 
         IWindowParentModel.include(GmapUtil);
 
@@ -3846,15 +4715,15 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api.models.parent').factory('uiGmapLayerParentModel', [
     'uiGmapBaseObject', 'uiGmapLogger', '$timeout', function(BaseObject, Logger, $timeout) {
       var LayerParentModel;
-      LayerParentModel = (function(_super) {
-        __extends(LayerParentModel, _super);
+      LayerParentModel = (function(superClass) {
+        extend(LayerParentModel, superClass);
 
         function LayerParentModel(scope, element, attrs, gMap, onLayerCreated, $log) {
           this.scope = scope;
@@ -3863,7 +4732,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           this.gMap = gMap;
           this.onLayerCreated = onLayerCreated != null ? onLayerCreated : void 0;
           this.$log = $log != null ? $log : Logger;
-          this.createGoogleLayer = __bind(this.createGoogleLayer, this);
+          this.createGoogleLayer = bind(this.createGoogleLayer, this);
           if (this.attrs.type == null) {
             this.$log.info('type attribute for the layer directive is mandatory. Layer creation aborted!!');
             return;
@@ -3874,45 +4743,46 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             this.doShow = this.scope.show;
           }
           if (this.doShow && (this.gMap != null)) {
-            this.layer.setMap(this.gMap);
+            this.gObject.setMap(this.gMap);
           }
           this.scope.$watch('show', (function(_this) {
             return function(newValue, oldValue) {
               if (newValue !== oldValue) {
                 _this.doShow = newValue;
                 if (newValue) {
-                  return _this.layer.setMap(_this.gMap);
+                  return _this.gObject.setMap(_this.gMap);
                 } else {
-                  return _this.layer.setMap(null);
+                  return _this.gObject.setMap(null);
                 }
               }
             };
           })(this), true);
           this.scope.$watch('options', (function(_this) {
             return function(newValue, oldValue) {
-              if (newValue !== oldValue) {
-                _this.layer.setMap(null);
-                _this.layer = null;
-                return _this.createGoogleLayer();
+              if (newValue !== oldValue && _this.doShow) {
+                return _this.gObject.setOptions(newValue);
               }
             };
           })(this), true);
           this.scope.$on('$destroy', (function(_this) {
             return function() {
-              return _this.layer.setMap(null);
+              return _this.gObject.setMap(null);
             };
           })(this));
         }
 
         LayerParentModel.prototype.createGoogleLayer = function() {
-          var _base;
+          var base;
           if (this.attrs.options == null) {
-            this.layer = this.attrs.namespace === void 0 ? new google.maps[this.attrs.type]() : new google.maps[this.attrs.namespace][this.attrs.type]();
+            this.gObject = this.attrs.namespace === void 0 ? new google.maps[this.attrs.type]() : new google.maps[this.attrs.namespace][this.attrs.type]();
           } else {
-            this.layer = this.attrs.namespace === void 0 ? new google.maps[this.attrs.type](this.scope.options) : new google.maps[this.attrs.namespace][this.attrs.type](this.scope.options);
+            this.gObject = this.attrs.namespace === void 0 ? new google.maps[this.attrs.type](this.scope.options) : new google.maps[this.attrs.namespace][this.attrs.type](this.scope.options);
           }
-          if ((this.layer != null) && (this.onLayerCreated != null)) {
-            return typeof (_base = this.onLayerCreated(this.scope, this.layer)) === "function" ? _base(this.layer) : void 0;
+          if ((this.gObject != null) && this.doShow) {
+            this.gObject.setMap(this.gMap);
+          }
+          if ((this.gObject != null) && (this.onLayerCreated != null)) {
+            return typeof (base = this.onLayerCreated(this.scope, this.gObject)) === "function" ? base(this.gObject) : void 0;
           }
         };
 
@@ -3925,15 +4795,15 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api.models.parent').factory('uiGmapMapTypeParentModel', [
     'uiGmapBaseObject', 'uiGmapLogger', function(BaseObject, Logger) {
       var MapTypeParentModel;
-      MapTypeParentModel = (function(_super) {
-        __extends(MapTypeParentModel, _super);
+      MapTypeParentModel = (function(superClass) {
+        extend(MapTypeParentModel, superClass);
 
         function MapTypeParentModel(scope, element, attrs, gMap, $log) {
           this.scope = scope;
@@ -3941,10 +4811,10 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           this.attrs = attrs;
           this.gMap = gMap;
           this.$log = $log != null ? $log : Logger;
-          this.hideOverlay = __bind(this.hideOverlay, this);
-          this.showOverlay = __bind(this.showOverlay, this);
-          this.refreshMapType = __bind(this.refreshMapType, this);
-          this.createMapType = __bind(this.createMapType, this);
+          this.hideOverlay = bind(this.hideOverlay, this);
+          this.showOverlay = bind(this.showOverlay, this);
+          this.refreshMapType = bind(this.refreshMapType, this);
+          this.createMapType = bind(this.createMapType, this);
           if (this.attrs.options == null) {
             this.$log.info('options attribute for the map-type directive is mandatory. Map type creation aborted!!');
             return;
@@ -3970,13 +4840,20 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
               }
             };
           })(this), true);
-          this.scope.$watch('options', (function(_this) {
+          this.scope.$watchCollection('options', (function(_this) {
             return function(newValue, oldValue) {
+              var different, mapTypeProps;
               if (!_.isEqual(newValue, oldValue)) {
-                return _this.refreshMapType();
+                mapTypeProps = ['tileSize', 'maxZoom', 'minZoom', 'name', 'alt'];
+                different = _.some(mapTypeProps, function(prop) {
+                  return !oldValue || !newValue || !_.isEqual(newValue[prop], oldValue[prop]);
+                });
+                if (different) {
+                  return _this.refreshMapType();
+                }
               }
             };
-          })(this), true);
+          })(this));
           if (angular.isDefined(this.attrs.refresh)) {
             this.scope.$watch('refresh', (function(_this) {
               return function(newValue, oldValue) {
@@ -4046,40 +4923,49 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global _:true,angular:true, */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module("uiGmapgoogle-maps.directives.api.models.parent").factory("uiGmapMarkersParentModel", [
-    "uiGmapIMarkerParentModel", "uiGmapModelsWatcher", "uiGmapPropMap", "uiGmapMarkerChildModel", "uiGmap_async", "uiGmapClustererMarkerManager", "uiGmapMarkerManager", "$timeout", "uiGmapIMarker", "uiGmapPromise", "uiGmapGmapUtil", "uiGmapLogger", function(IMarkerParentModel, ModelsWatcher, PropMap, MarkerChildModel, _async, ClustererMarkerManager, MarkerManager, $timeout, IMarker, uiGmapPromise, GmapUtil, $log) {
-      var MarkersParentModel;
-      MarkersParentModel = (function(_super) {
-        __extends(MarkersParentModel, _super);
+    "uiGmapIMarkerParentModel", "uiGmapModelsWatcher", "uiGmapPropMap", "uiGmapMarkerChildModel", "uiGmap_async", "uiGmapClustererMarkerManager", "uiGmapMarkerManager", "$timeout", "uiGmapIMarker", "uiGmapPromise", "uiGmapGmapUtil", "uiGmapLogger", "uiGmapSpiderfierMarkerManager", function(IMarkerParentModel, ModelsWatcher, PropMap, MarkerChildModel, _async, ClustererMarkerManager, MarkerManager, $timeout, IMarker, uiGmapPromise, GmapUtil, $log, SpiderfierMarkerManager) {
+      var MarkersParentModel, _setPlurals;
+      _setPlurals = function(val, objToSet) {
+        objToSet.plurals = new PropMap();
+        objToSet.scope.plurals = objToSet.plurals;
+        return objToSet;
+      };
+      MarkersParentModel = (function(superClass) {
+        extend(MarkersParentModel, superClass);
 
         MarkersParentModel.include(GmapUtil);
 
         MarkersParentModel.include(ModelsWatcher);
 
         function MarkersParentModel(scope, element, attrs, map) {
-          this.onDestroy = __bind(this.onDestroy, this);
-          this.newChildMarker = __bind(this.newChildMarker, this);
-          this.updateChild = __bind(this.updateChild, this);
-          this.pieceMeal = __bind(this.pieceMeal, this);
-          this.reBuildMarkers = __bind(this.reBuildMarkers, this);
-          this.createMarkersFromScratch = __bind(this.createMarkersFromScratch, this);
-          this.validateScope = __bind(this.validateScope, this);
-          this.onWatch = __bind(this.onWatch, this);
-          var self;
+          this.maybeExecMappedEvent = bind(this.maybeExecMappedEvent, this);
+          this.onDestroy = bind(this.onDestroy, this);
+          this.newChildMarker = bind(this.newChildMarker, this);
+          this.pieceMeal = bind(this.pieceMeal, this);
+          this.rebuildAll = bind(this.rebuildAll, this);
+          this.createAllNew = bind(this.createAllNew, this);
+          this.bindToTypeEvents = bind(this.bindToTypeEvents, this);
+          this.createChildScopes = bind(this.createChildScopes, this);
+          this.validateScope = bind(this.validateScope, this);
+          this.onWatch = bind(this.onWatch, this);
           MarkersParentModel.__super__.constructor.call(this, scope, element, attrs, map);
-          self = this;
-          this.scope.markerModels = new PropMap();
-          this.scope.markerModelsUpdate = {
+          this["interface"] = IMarker;
+          _setPlurals(new PropMap(), this);
+          this.scope.pluralsUpdate = {
             updateCtr: 0
           };
           this.$log.info(this);
           this.doRebuildAll = this.scope.doRebuildAll != null ? this.scope.doRebuildAll : false;
-          this.setIdKey(scope);
+          this.setIdKey(this.scope);
           this.scope.$watch('doRebuildAll', (function(_this) {
             return function(newValue, oldValue) {
               if (newValue !== oldValue) {
@@ -4087,7 +4973,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
               }
             };
           })(this));
-          if ((scope.models == null) || scope.models.length === 0) {
+          if (!this.modelsLength()) {
             this.modelsRendered = false;
           }
           this.scope.$watch('models', (function(_this) {
@@ -4097,25 +4983,28 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
                   return;
                 }
                 _this.modelsRendered = true;
-                return _this.onWatch('models', scope, newValue, oldValue);
+                return _this.onWatch('models', _this.scope, newValue, oldValue);
               }
             };
           })(this), !this.isTrue(attrs.modelsbyref));
-          this.watch('doCluster', scope);
-          this.watch('clusterOptions', scope);
-          this.watch('clusterEvents', scope);
-          this.watch('fit', scope);
-          this.watch('idKey', scope);
-          this.gMarkerManager = void 0;
-          this.createMarkersFromScratch(scope);
+          this.watch('doCluster', this.scope);
+          this.watch('type', this.scope);
+          this.watch('clusterOptions', this.scope);
+          this.watch('clusterEvents', this.scope);
+          this.watch('typeOptions', this.scope);
+          this.watch('typeEvents', this.scope);
+          this.watch('fit', this.scope);
+          this.watch('idKey', this.scope);
+          this.gManager = void 0;
+          this.createAllNew(this.scope);
         }
 
         MarkersParentModel.prototype.onWatch = function(propNameToWatch, scope, newValue, oldValue) {
           if (propNameToWatch === "idKey" && newValue !== oldValue) {
             this.idKey = newValue;
           }
-          if (this.doRebuildAll) {
-            return this.reBuildMarkers(scope);
+          if (this.doRebuildAll || (propNameToWatch === 'doCluster' || propNameToWatch === 'type')) {
+            return this.rebuildAll(scope);
           } else {
             return this.pieceMeal(scope);
           }
@@ -4130,43 +5019,82 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           return MarkersParentModel.__super__.validateScope.call(this, scope) || modelsNotDefined;
         };
 
-        MarkersParentModel.prototype.createMarkersFromScratch = function(scope) {
-          var maybeCanceled;
-          if (scope.doCluster) {
-            if (scope.clusterEvents) {
-              this.clusterInternalOptions = _.once((function(_this) {
-                return function() {
-                  var self, _ref, _ref1, _ref2;
-                  self = _this;
-                  if (!_this.origClusterEvents) {
-                    _this.origClusterEvents = {
-                      click: (_ref = scope.clusterEvents) != null ? _ref.click : void 0,
-                      mouseout: (_ref1 = scope.clusterEvents) != null ? _ref1.mouseout : void 0,
-                      mouseover: (_ref2 = scope.clusterEvents) != null ? _ref2.mouseover : void 0
-                    };
-                    return _.extend(scope.clusterEvents, {
-                      click: function(cluster) {
-                        return self.maybeExecMappedEvent(cluster, 'click');
-                      },
-                      mouseout: function(cluster) {
-                        return self.maybeExecMappedEvent(cluster, 'mouseout');
-                      },
-                      mouseover: function(cluster) {
-                        return self.maybeExecMappedEvent(cluster, 'mouseover');
-                      }
-                    });
-                  }
-                };
-              })(this))();
-            }
-            if (!this.gMarkerManager) {
-              this.gMarkerManager = new ClustererMarkerManager(this.map, void 0, scope.clusterOptions, this.clusterInternalOptions);
-            }
+
+        /*
+        Not used internally by this parent
+        created for consistency for external control in the API
+         */
+
+        MarkersParentModel.prototype.createChildScopes = function(isCreatingFromScratch) {
+          if ((this.gMap == null) || (this.scope.models == null)) {
+            return;
           }
-          if (!this.gMarkerManager) {
-            this.gMarkerManager = new MarkerManager(this.map);
+          if (isCreatingFromScratch) {
+            return this.createAllNew(this.scope, false);
+          } else {
+            return this.pieceMeal(this.scope, false);
           }
-          this.gMarkerManager.clear();
+        };
+
+        MarkersParentModel.prototype.bindToTypeEvents = function(typeEvents, events) {
+          var internalHandles, self;
+          if (events == null) {
+            events = ['click', 'mouseout', 'mouseover'];
+          }
+
+          /*
+            You should only be binding to events that produce groups/clusters of somthing.
+            Otherwise use the orginal event handle.
+            For Example: Click on a cluster pushes a cluster/group obj through which has getMarkers
+            However Spiderfy's click is for a single marker so this is not ideal for that.
+           */
+          self = this;
+          if (!this.origTypeEvents) {
+            this.origTypeEvents = {};
+            _.each(events, (function(_this) {
+              return function(eventName) {
+                return _this.origTypeEvents[eventName] = typeEvents != null ? typeEvents[eventName] : void 0;
+              };
+            })(this));
+          } else {
+            angular.extend(typeEvents, this.origTypeEvents);
+          }
+          internalHandles = {};
+          _.each(events, function(eventName) {
+            return internalHandles[eventName] = function(group) {
+              return self.maybeExecMappedEvent(group, eventName);
+            };
+          });
+          return angular.extend(typeEvents, internalHandles);
+        };
+
+        MarkersParentModel.prototype.createAllNew = function(scope) {
+          var isSpiderfied, maybeCanceled, typeEvents, typeOptions;
+          if (this.gManager != null) {
+            if (this.gManager instanceof SpiderfierMarkerManager) {
+              isSpiderfied = this.gManager.isSpiderfied();
+            }
+            this.gManager.clear();
+            delete this.gManager;
+          }
+          typeEvents = scope.typeEvents || scope.clusterEvents;
+          typeOptions = scope.typeOptions || scope.clusterOptions;
+          if (scope.doCluster || scope.type === 'cluster') {
+            if (typeEvents != null) {
+              this.bindToTypeEvents(typeEvents);
+            }
+            this.gManager = new ClustererMarkerManager(this.map, void 0, typeOptions, typeEvents);
+          } else if (scope.type === 'spider') {
+            if (typeEvents != null) {
+              this.bindToTypeEvents(typeEvents, ['spiderfy', 'unspiderfy']);
+            }
+            this.gManager = new SpiderfierMarkerManager(this.map, void 0, typeOptions, typeEvents, this.scope);
+            if (isSpiderfied) {
+              this.gManager.spiderfy();
+            }
+          } else {
+            this.gManager = new MarkerManager(this.map);
+          }
           if (this.didQueueInitPromise(this, scope)) {
             return;
           }
@@ -4180,29 +5108,29 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
                 return maybeCanceled;
               }, _async.chunkSizeFrom(scope.chunk)).then(function() {
                 _this.modelsRendered = true;
-                _this.gMarkerManager.draw();
                 if (scope.fit) {
-                  _this.gMarkerManager.fit();
+                  _this.gManager.fit();
                 }
-                return _this.scope.markerModelsUpdate.updateCtr += 1;
+                _this.gManager.draw();
+                return _this.scope.pluralsUpdate.updateCtr += 1;
               }, _async.chunkSizeFrom(scope.chunk));
             };
           })(this));
         };
 
-        MarkersParentModel.prototype.reBuildMarkers = function(scope) {
-          var _ref;
+        MarkersParentModel.prototype.rebuildAll = function(scope) {
+          var ref;
           if (!scope.doRebuild && scope.doRebuild !== void 0) {
             return;
           }
-          if ((_ref = this.scope.markerModels) != null ? _ref.length : void 0) {
+          if ((ref = this.scope.plurals) != null ? ref.length : void 0) {
             return this.onDestroy(scope).then((function(_this) {
               return function() {
-                return _this.createMarkersFromScratch(scope);
+                return _this.createAllNew(scope);
               };
             })(this));
           } else {
-            return this.createMarkersFromScratch(scope);
+            return this.createAllNew(scope);
           }
         };
 
@@ -4213,13 +5141,13 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           }
           maybeCanceled = null;
           payload = null;
-          if ((this.scope.models != null) && this.scope.models.length > 0 && this.scope.markerModels.length > 0) {
+          if (this.modelsLength() && this.scope.plurals.length) {
             return _async.promiseLock(this, uiGmapPromise.promiseTypes.update, 'pieceMeal', (function(canceledMsg) {
               return maybeCanceled = canceledMsg;
             }), (function(_this) {
               return function() {
                 return uiGmapPromise.promise((function() {
-                  return _this.figureOutState(_this.idKey, scope, _this.scope.markerModels, _this.modelKeyComparison);
+                  return _this.figureOutState(_this.idKey, scope, _this.scope.plurals, _this.modelKeyComparison);
                 })).then(function(state) {
                   payload = state;
                   return _async.each(payload.removals, function(child) {
@@ -4227,7 +5155,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
                       if (child.destroy != null) {
                         child.destroy();
                       }
-                      _this.scope.markerModels.remove(child.id);
+                      _this.scope.plurals.remove(child.id);
                       return maybeCanceled;
                     }
                   }, _async.chunkSizeFrom(scope.chunk));
@@ -4243,87 +5171,113 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
                   }, _async.chunkSizeFrom(scope.chunk));
                 }).then(function() {
                   if (payload.adds.length > 0 || payload.removals.length > 0 || payload.updates.length > 0) {
-                    _this.gMarkerManager.draw();
-                    scope.markerModels = _this.scope.markerModels;
+                    scope.plurals = _this.scope.plurals;
                     if (scope.fit) {
-                      _this.gMarkerManager.fit();
+                      _this.gManager.fit();
                     }
+                    _this.gManager.draw();
                   }
-                  return _this.scope.markerModelsUpdate.updateCtr += 1;
+                  return _this.scope.pluralsUpdate.updateCtr += 1;
                 });
               };
             })(this));
           } else {
             this.inProgress = false;
-            return this.reBuildMarkers(scope);
+            return this.rebuildAll(scope);
           }
-        };
-
-        MarkersParentModel.prototype.updateChild = function(child, model) {
-          if (model[this.idKey] == null) {
-            this.$log.error("Marker model has no id to assign a child to. This is required for performance. Please assign id, or redirect id to a different key.");
-            return;
-          }
-          return child.updateModel(model);
         };
 
         MarkersParentModel.prototype.newChildMarker = function(model, scope) {
-          var child, childScope, doDrawSelf, keys;
+          var child, childScope, keys;
+          if (!model) {
+            throw 'model undefined';
+          }
           if (model[this.idKey] == null) {
             this.$log.error("Marker model has no id to assign a child to. This is required for performance. Please assign id, or redirect id to a different key.");
             return;
           }
           this.$log.info('child', child, 'markers', this.scope.markerModels);
-          childScope = scope.$new(true);
+          childScope = scope.$new(false);
           childScope.events = scope.events;
           keys = {};
-          _.each(IMarker.scopeKeys, function(v, k) {
+          IMarker.scopeKeys.forEach(function(k) {
             return keys[k] = scope[k];
           });
-          child = new MarkerChildModel(childScope, model, keys, this.map, this.DEFAULTS, this.doClick, this.gMarkerManager, doDrawSelf = false);
-          this.scope.markerModels.put(model[this.idKey], child);
+          child = new MarkerChildModel({
+            scope: childScope,
+            model: model,
+            keys: keys,
+            gMap: this.map,
+            defaults: this.DEFAULTS,
+            doClick: this.doClick,
+            gManager: this.gManager,
+            doDrawSelf: false,
+            isScopeModel: true
+          });
+          this.scope.plurals.put(model[this.idKey], child);
           return child;
         };
 
         MarkersParentModel.prototype.onDestroy = function(scope) {
+          MarkersParentModel.__super__.onDestroy.call(this, scope);
           return _async.promiseLock(this, uiGmapPromise.promiseTypes["delete"], void 0, void 0, (function(_this) {
             return function() {
-              return _async.each(_this.scope.markerModels.values(), function(model) {
+              return _async.each(_this.scope.plurals.values(), function(model) {
                 if (model != null) {
                   return model.destroy(false);
                 }
-              }, false).then(function() {
-                delete _this.scope.markerModels;
-                if (_this.gMarkerManager != null) {
-                  _this.gMarkerManager.clear();
+              }, _async.chunkSizeFrom(_this.scope.cleanchunk, false)).then(function() {
+                if (_this.gManager != null) {
+                  _this.gManager.destroy();
                 }
-                _this.scope.markerModels = new PropMap();
-                return _this.scope.markerModelsUpdate.updateCtr += 1;
+                _this.plurals.removeAll();
+                if (_this.plurals !== _this.scope.plurals) {
+                  console.error('plurals out of sync for MarkersParentModel');
+                }
+                return _this.scope.pluralsUpdate.updateCtr += 1;
               });
             };
           })(this));
         };
 
-        MarkersParentModel.prototype.maybeExecMappedEvent = function(cluster, fnName) {
-          var pair, _ref;
-          if (_.isFunction((_ref = this.scope.clusterEvents) != null ? _ref[fnName] : void 0)) {
-            pair = this.mapClusterToMarkerModels(cluster);
-            if (this.origClusterEvents[fnName]) {
-              return this.origClusterEvents[fnName](pair.cluster, pair.mapped);
+        MarkersParentModel.prototype.maybeExecMappedEvent = function(group, fnName) {
+          var pair, typeEvents;
+          if (this.scope.$$destroyed) {
+            return;
+          }
+          typeEvents = this.scope.typeEvents || this.scope.clusterEvents;
+          if (_.isFunction(typeEvents != null ? typeEvents[fnName] : void 0)) {
+            pair = this.mapTypeToPlurals(group);
+            if (this.origTypeEvents[fnName]) {
+              return this.origTypeEvents[fnName](pair.group, pair.mapped);
             }
           }
         };
 
-        MarkersParentModel.prototype.mapClusterToMarkerModels = function(cluster) {
-          var mapped;
-          mapped = cluster.getMarkers().map((function(_this) {
-            return function(g) {
-              return _this.scope.markerModels.get(g.key).model;
-            };
-          })(this));
+        MarkersParentModel.prototype.mapTypeToPlurals = function(group) {
+          var arrayToMap, mapped, ref;
+          if (_.isArray(group)) {
+            arrayToMap = group;
+          } else if (_.isFunction(group.getMarkers)) {
+            arrayToMap = group.getMarkers();
+          }
+          if (arrayToMap == null) {
+            $log.error("Unable to map event as we cannot find the array group to map");
+            return;
+          }
+          if ((ref = this.scope.plurals.values()) != null ? ref.length : void 0) {
+            mapped = arrayToMap.map((function(_this) {
+              return function(g) {
+                return _this.scope.plurals.get(g.key).model;
+              };
+            })(this));
+          } else {
+            mapped = [];
+          }
           return {
-            cluster: cluster,
-            mapped: mapped
+            cluster: group,
+            mapped: mapped,
+            group: group
           };
         };
 
@@ -4343,595 +5297,37 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
-
-  angular.module('uiGmapgoogle-maps.directives.api.models.parent').factory('uiGmapPolygonsParentModel', [
-    '$timeout', 'uiGmapLogger', 'uiGmapModelKey', 'uiGmapModelsWatcher', 'uiGmapPropMap', 'uiGmapPolygonChildModel', 'uiGmap_async', 'uiGmapPromise', function($timeout, $log, ModelKey, ModelsWatcher, PropMap, PolygonChildModel, _async, uiGmapPromise) {
-      var PolygonsParentModel;
-      return PolygonsParentModel = (function(_super) {
-        __extends(PolygonsParentModel, _super);
-
-        PolygonsParentModel.include(ModelsWatcher);
-
-        function PolygonsParentModel(scope, element, attrs, gMap, defaults) {
-          var self;
-          this.scope = scope;
-          this.element = element;
-          this.attrs = attrs;
-          this.gMap = gMap;
-          this.defaults = defaults;
-          this.modelKeyComparison = __bind(this.modelKeyComparison, this);
-          this.createChild = __bind(this.createChild, this);
-          this.pieceMeal = __bind(this.pieceMeal, this);
-          this.createAllNew = __bind(this.createAllNew, this);
-          this.watchIdKey = __bind(this.watchIdKey, this);
-          this.createChildScopes = __bind(this.createChildScopes, this);
-          this.watchOurScope = __bind(this.watchOurScope, this);
-          this.watchDestroy = __bind(this.watchDestroy, this);
-          this.onDestroy = __bind(this.onDestroy, this);
-          this.rebuildAll = __bind(this.rebuildAll, this);
-          this.doINeedToWipe = __bind(this.doINeedToWipe, this);
-          this.watchModels = __bind(this.watchModels, this);
-          this.watch = __bind(this.watch, this);
-          PolygonsParentModel.__super__.constructor.call(this, scope);
-          self = this;
-          this.$log = $log;
-          this.plurals = new PropMap();
-          this.scopePropNames = ['path', 'stroke', 'clickable', 'draggable', 'editable', 'geodesic', 'icons', 'visible'];
-          _.each(this.scopePropNames, (function(_this) {
-            return function(name) {
-              return _this[name + 'Key'] = void 0;
-            };
-          })(this));
-          this.models = void 0;
-          this.firstTime = true;
-          this.$log.info(this);
-          this.watchOurScope(scope);
-          this.createChildScopes();
-        }
-
-        PolygonsParentModel.prototype.watch = function(scope, name, nameKey) {
-          return scope.$watch(name, (function(_this) {
-            return function(newValue, oldValue) {
-              var maybeCanceled;
-              if (newValue !== oldValue) {
-                maybeCanceled = null;
-                _this[nameKey] = _.isFunction(newValue) ? newValue() : newValue;
-                return _async.promiseLock(_this, uiGmapPromise.promiseTypes.update, "watch " + name + " " + nameKey, (function(canceledMsg) {
-                  return maybeCanceled = canceledMsg;
-                }), function() {
-                  return _async.each(_this.plurals.values(), function(model) {
-                    model.scope[name] = _this[nameKey] === 'self' ? model : model[_this[nameKey]];
-                    return maybeCanceled;
-                  }, _async.chunkSizeFrom(scope.chunk));
-                });
-              }
-            };
-          })(this));
-        };
-
-        PolygonsParentModel.prototype.watchModels = function(scope) {
-          return scope.$watchCollection('models', (function(_this) {
-            return function(newValue, oldValue) {
-              if (!(_.isEqual(newValue, oldValue) && (_this.lastNewValue !== newValue || _this.lastOldValue !== oldValue))) {
-                _this.lastNewValue = newValue;
-                _this.lastOldValue = oldValue;
-                if (_this.doINeedToWipe(newValue)) {
-                  return _this.rebuildAll(scope, true, true);
-                } else {
-                  return _this.createChildScopes(false);
-                }
-              }
-            };
-          })(this));
-        };
-
-        PolygonsParentModel.prototype.doINeedToWipe = function(newValue) {
-          var newValueIsEmpty;
-          newValueIsEmpty = newValue != null ? newValue.length === 0 : true;
-          return this.plurals.length > 0 && newValueIsEmpty;
-        };
-
-        PolygonsParentModel.prototype.rebuildAll = function(scope, doCreate, doDelete) {
-          return this.onDestroy(doDelete).then((function(_this) {
-            return function() {
-              if (doCreate) {
-                return _this.createChildScopes();
-              }
-            };
-          })(this));
-        };
-
-        PolygonsParentModel.prototype.onDestroy = function(doDelete) {
-          return _async.promiseLock(this, uiGmapPromise.promiseTypes["delete"], void 0, void 0, (function(_this) {
-            return function() {
-              return _async.each(_this.plurals.values(), function(child) {
-                return child.destroy(true);
-              }, false).then(function() {
-                if (doDelete) {
-                  delete _this.plurals;
-                }
-                return _this.plurals = new PropMap();
-              });
-            };
-          })(this));
-        };
-
-        PolygonsParentModel.prototype.watchDestroy = function(scope) {
-          return scope.$on('$destroy', (function(_this) {
-            return function() {
-              return _this.rebuildAll(scope, false, true);
-            };
-          })(this));
-        };
-
-        PolygonsParentModel.prototype.watchOurScope = function(scope) {
-          return _.each(this.scopePropNames, (function(_this) {
-            return function(name) {
-              var nameKey;
-              nameKey = name + 'Key';
-              _this[nameKey] = typeof scope[name] === 'function' ? scope[name]() : scope[name];
-              return _this.watch(scope, name, nameKey);
-            };
-          })(this));
-        };
-
-        PolygonsParentModel.prototype.createChildScopes = function(isCreatingFromScratch) {
-          if (isCreatingFromScratch == null) {
-            isCreatingFromScratch = true;
-          }
-          if (angular.isUndefined(this.scope.models)) {
-            this.$log.error('No models to create Polygons from! I Need direct models!');
-            return;
-          }
-          if (this.gMap != null) {
-            if (this.scope.models != null) {
-              this.watchIdKey(this.scope);
-              if (isCreatingFromScratch) {
-                return this.createAllNew(this.scope, false);
-              } else {
-                return this.pieceMeal(this.scope, false);
-              }
-            }
-          }
-        };
-
-        PolygonsParentModel.prototype.watchIdKey = function(scope) {
-          this.setIdKey(scope);
-          return scope.$watch('idKey', (function(_this) {
-            return function(newValue, oldValue) {
-              if (newValue !== oldValue && (newValue == null)) {
-                _this.idKey = newValue;
-                return _this.rebuildAll(scope, true, true);
-              }
-            };
-          })(this));
-        };
-
-        PolygonsParentModel.prototype.createAllNew = function(scope, isArray) {
-          var maybeCanceled;
-          if (isArray == null) {
-            isArray = false;
-          }
-          this.models = scope.models;
-          if (this.firstTime) {
-            this.watchModels(scope);
-            this.watchDestroy(scope);
-          }
-          if (this.didQueueInitPromise(this, scope)) {
-            return;
-          }
-          maybeCanceled = null;
-          return _async.promiseLock(this, uiGmapPromise.promiseTypes.create, 'createAllNew', (function(canceledMsg) {
-            return maybeCanceled = canceledMsg;
-          }), (function(_this) {
-            return function() {
-              return _async.each(scope.models, function(model) {
-                var child;
-                child = _this.createChild(model, _this.gMap);
-                if (maybeCanceled) {
-                  $log.debug('createNew should fall through safely');
-                  child.isEnabled = false;
-                }
-                return maybeCanceled;
-              }, _async.chunkSizeFrom(scope.chunk)).then(function() {
-                return _this.firstTime = false;
-              });
-            };
-          })(this));
-        };
-
-        PolygonsParentModel.prototype.pieceMeal = function(scope, isArray) {
-          var maybeCanceled, payload;
-          if (isArray == null) {
-            isArray = true;
-          }
-          if (scope.$$destroyed) {
-            return;
-          }
-          maybeCanceled = null;
-          payload = null;
-          this.models = scope.models;
-          if ((scope != null) && (scope.models != null) && scope.models.length > 0 && this.plurals.length > 0) {
-            return _async.promiseLock(this, uiGmapPromise.promiseTypes.update, 'pieceMeal', (function(canceledMsg) {
-              return maybeCanceled = canceledMsg;
-            }), (function(_this) {
-              return function() {
-                return uiGmapPromise.promise(function() {
-                  return _this.figureOutState(_this.idKey, scope, _this.plurals, _this.modelKeyComparison);
-                }).then(function(state) {
-                  payload = state;
-                  return _async.each(payload.removals, function(id) {
-                    var child;
-                    child = _this.plurals.get(id);
-                    if (child != null) {
-                      child.destroy();
-                      _this.plurals.remove(id);
-                      return maybeCanceled;
-                    }
-                  }, _async.chunkSizeFrom(scope.chunk));
-                }).then(function() {
-                  return _async.each(payload.adds, function(modelToAdd) {
-                    if (maybeCanceled) {
-                      $log.debug('pieceMeal should fall through safely');
-                    }
-                    _this.createChild(modelToAdd, _this.gMap);
-                    return maybeCanceled;
-                  }, _async.chunkSizeFrom(scope.chunk));
-                });
-              };
-            })(this));
-          } else {
-            this.inProgress = false;
-            return this.rebuildAll(this.scope, true, true);
-          }
-        };
-
-        PolygonsParentModel.prototype.createChild = function(model, gMap) {
-          var child, childScope;
-          childScope = this.scope.$new(false);
-          this.setChildScope(this.scopePropNames, childScope, model);
-          childScope.$watch('model', (function(_this) {
-            return function(newValue, oldValue) {
-              if (newValue !== oldValue) {
-                return _this.setChildScope(childScope, newValue);
-              }
-            };
-          })(this), true);
-          childScope["static"] = this.scope["static"];
-          child = new PolygonChildModel(childScope, this.attrs, gMap, this.defaults, model);
-          if (model[this.idKey] == null) {
-            this.$log.error("Polygon model has no id to assign a child to.\nThis is required for performance. Please assign id,\nor redirect id to a different key.");
-            return;
-          }
-          this.plurals.put(model[this.idKey], child);
-          return child;
-        };
-
-        PolygonsParentModel.prototype.modelKeyComparison = function(model1, model2) {
-          return _.isEqual(this.evalModelHandle(model1, this.scope.path), this.evalModelHandle(model2, this.scope.path));
-        };
-
-        return PolygonsParentModel;
-
-      })(ModelKey);
-    }
-  ]);
+  ['Polygon', 'Polyline'].forEach(function(name) {
+    return angular.module('uiGmapgoogle-maps.directives.api.models.parent').factory("uiGmap" + name + "sParentModel", [
+      'uiGmapBasePolysParentModel', "uiGmap" + name + "ChildModel", "uiGmapI" + name, function(BasePolysParentModel, ChildModel, IPoly) {
+        return BasePolysParentModel(IPoly, ChildModel, name);
+      }
+    ]);
+  });
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*globals angular, _, google */
 
-  angular.module('uiGmapgoogle-maps.directives.api.models.parent').factory('uiGmapPolylinesParentModel', [
-    '$timeout', 'uiGmapLogger', 'uiGmapModelKey', 'uiGmapModelsWatcher', 'uiGmapPropMap', 'uiGmapPolylineChildModel', 'uiGmap_async', 'uiGmapPromise', function($timeout, $log, ModelKey, ModelsWatcher, PropMap, PolylineChildModel, _async, uiGmapPromise) {
-      var PolylinesParentModel;
-      return PolylinesParentModel = (function(_super) {
-        __extends(PolylinesParentModel, _super);
-
-        PolylinesParentModel.include(ModelsWatcher);
-
-        function PolylinesParentModel(scope, element, attrs, gMap, defaults) {
-          var self;
-          this.scope = scope;
-          this.element = element;
-          this.attrs = attrs;
-          this.gMap = gMap;
-          this.defaults = defaults;
-          this.modelKeyComparison = __bind(this.modelKeyComparison, this);
-          this.setChildScope = __bind(this.setChildScope, this);
-          this.createChild = __bind(this.createChild, this);
-          this.pieceMeal = __bind(this.pieceMeal, this);
-          this.createAllNew = __bind(this.createAllNew, this);
-          this.watchIdKey = __bind(this.watchIdKey, this);
-          this.createChildScopes = __bind(this.createChildScopes, this);
-          this.watchOurScope = __bind(this.watchOurScope, this);
-          this.watchDestroy = __bind(this.watchDestroy, this);
-          this.onDestroy = __bind(this.onDestroy, this);
-          this.rebuildAll = __bind(this.rebuildAll, this);
-          this.doINeedToWipe = __bind(this.doINeedToWipe, this);
-          this.watchModels = __bind(this.watchModels, this);
-          this.watch = __bind(this.watch, this);
-          PolylinesParentModel.__super__.constructor.call(this, scope);
-          self = this;
-          this.$log = $log;
-          this.plurals = new PropMap();
-          this.scopePropNames = ['path', 'stroke', 'clickable', 'draggable', 'editable', 'geodesic', 'icons', 'visible'];
-          _.each(this.scopePropNames, (function(_this) {
-            return function(name) {
-              return _this[name + 'Key'] = void 0;
-            };
-          })(this));
-          this.models = void 0;
-          this.firstTime = true;
-          this.$log.info(this);
-          this.watchOurScope(scope);
-          this.createChildScopes();
-        }
-
-        PolylinesParentModel.prototype.watch = function(scope, name, nameKey) {
-          return scope.$watch(name, (function(_this) {
-            return function(newValue, oldValue) {
-              var maybeCanceled;
-              if (newValue !== oldValue) {
-                maybeCanceled = null;
-                _this[nameKey] = _.isFunction(newValue) ? newValue() : newValue;
-                return _async.promiseLock(_this, uiGmapPromise.promiseTypes.update, "watch " + name + " " + nameKey, (function(canceledMsg) {
-                  return maybeCanceled = canceledMsg;
-                }), function() {
-                  return _async.each(_this.plurals.values(), function(model) {
-                    model.scope[name] = _this[nameKey] === 'self' ? model : model[_this[nameKey]];
-                    return maybeCanceled;
-                  }, false);
-                });
-              }
-            };
-          })(this));
-        };
-
-        PolylinesParentModel.prototype.watchModels = function(scope) {
-          return scope.$watchCollection('models', (function(_this) {
-            return function(newValue, oldValue) {
-              if (!(_.isEqual(newValue, oldValue) && (_this.lastNewValue !== newValue || _this.lastOldValue !== oldValue))) {
-                _this.lastNewValue = newValue;
-                _this.lastOldValue = oldValue;
-                if (_this.doINeedToWipe(newValue)) {
-                  return _this.rebuildAll(scope, true, true);
-                } else {
-                  return _this.createChildScopes(false);
-                }
-              }
-            };
-          })(this));
-        };
-
-        PolylinesParentModel.prototype.doINeedToWipe = function(newValue) {
-          var newValueIsEmpty;
-          newValueIsEmpty = newValue != null ? newValue.length === 0 : true;
-          return this.plurals.length > 0 && newValueIsEmpty;
-        };
-
-        PolylinesParentModel.prototype.rebuildAll = function(scope, doCreate, doDelete) {
-          return this.onDestroy(doDelete).then((function(_this) {
-            return function() {
-              if (doCreate) {
-                return _this.createChildScopes();
-              }
-            };
-          })(this));
-        };
-
-        PolylinesParentModel.prototype.onDestroy = function(doDelete) {
-          return _async.promiseLock(this, uiGmapPromise.promiseTypes["delete"], void 0, void 0, (function(_this) {
-            return function() {
-              return _async.each(_this.plurals.values(), function(child) {
-                return child.destroy(true);
-              }, false).then(function() {
-                if (doDelete) {
-                  delete _this.plurals;
-                }
-                return _this.plurals = new PropMap();
-              });
-            };
-          })(this));
-        };
-
-        PolylinesParentModel.prototype.watchDestroy = function(scope) {
-          return scope.$on('$destroy', (function(_this) {
-            return function() {
-              return _this.rebuildAll(scope, false, true);
-            };
-          })(this));
-        };
-
-        PolylinesParentModel.prototype.watchOurScope = function(scope) {
-          return _.each(this.scopePropNames, (function(_this) {
-            return function(name) {
-              var nameKey;
-              nameKey = name + 'Key';
-              _this[nameKey] = typeof scope[name] === 'function' ? scope[name]() : scope[name];
-              return _this.watch(scope, name, nameKey);
-            };
-          })(this));
-        };
-
-        PolylinesParentModel.prototype.createChildScopes = function(isCreatingFromScratch) {
-          if (isCreatingFromScratch == null) {
-            isCreatingFromScratch = true;
-          }
-          if (angular.isUndefined(this.scope.models)) {
-            this.$log.error('No models to create Polylines from! I Need direct models!');
-            return;
-          }
-          if (this.gMap != null) {
-            if (this.scope.models != null) {
-              this.watchIdKey(this.scope);
-              if (isCreatingFromScratch) {
-                return this.createAllNew(this.scope, false);
-              } else {
-                return this.pieceMeal(this.scope, false);
-              }
-            }
-          }
-        };
-
-        PolylinesParentModel.prototype.watchIdKey = function(scope) {
-          this.setIdKey(scope);
-          return scope.$watch('idKey', (function(_this) {
-            return function(newValue, oldValue) {
-              if (newValue !== oldValue && (newValue == null)) {
-                _this.idKey = newValue;
-                return _this.rebuildAll(scope, true, true);
-              }
-            };
-          })(this));
-        };
-
-        PolylinesParentModel.prototype.createAllNew = function(scope, isArray) {
-          var maybeCanceled;
-          if (isArray == null) {
-            isArray = false;
-          }
-          this.models = scope.models;
-          if (this.firstTime) {
-            this.watchModels(scope);
-            this.watchDestroy(scope);
-          }
-          if (this.didQueueInitPromise(this, scope)) {
-            return;
-          }
-          maybeCanceled = null;
-          return _async.promiseLock(this, uiGmapPromise.promiseTypes.create, 'createAllNew', (function(canceledMsg) {
-            return maybeCanceled = canceledMsg;
-          }), (function(_this) {
-            return function() {
-              return _async.each(scope.models, function(model) {
-                _this.createChild(model, _this.gMap);
-                if (maybeCanceled) {
-                  $log.debug('createNew should fall through safely');
-                }
-                return maybeCanceled;
-              }).then(function() {
-                return _this.firstTime = false;
-              });
-            };
-          })(this));
-        };
-
-        PolylinesParentModel.prototype.pieceMeal = function(scope, isArray) {
-          var maybeCanceled, payload;
-          if (isArray == null) {
-            isArray = true;
-          }
-          if (scope.$$destroyed) {
-            return;
-          }
-          maybeCanceled = null;
-          payload = null;
-          this.models = scope.models;
-          if ((scope != null) && (scope.models != null) && scope.models.length > 0 && this.plurals.length > 0) {
-            return _async.promiseLock(this, uiGmapPromise.promiseTypes.update, 'pieceMeal', (function(canceledMsg) {
-              return maybeCanceled = canceledMsg;
-            }), (function(_this) {
-              return function() {
-                return uiGmapPromise.promise(function() {
-                  return _this.figureOutState(_this.idKey, scope, _this.plurals, _this.modelKeyComparison);
-                }).then(function(state) {
-                  payload = state;
-                  return _async.each(payload.removals, function(id) {
-                    var child;
-                    child = _this.plurals.get(id);
-                    if (child != null) {
-                      child.destroy();
-                      _this.plurals.remove(id);
-                      return maybeCanceled;
-                    }
-                  });
-                }).then(function() {
-                  return _async.each(payload.adds, function(modelToAdd) {
-                    if (maybeCanceled) {
-                      $log.debug('pieceMeal should fall through safely');
-                    }
-                    _this.createChild(modelToAdd, _this.gMap);
-                    return maybeCanceled;
-                  });
-                });
-              };
-            })(this));
-          } else {
-            this.inProgress = false;
-            return this.rebuildAll(this.scope, true, true);
-          }
-        };
-
-        PolylinesParentModel.prototype.createChild = function(model, gMap) {
-          var child, childScope;
-          childScope = this.scope.$new(false);
-          this.setChildScope(childScope, model);
-          childScope.$watch('model', (function(_this) {
-            return function(newValue, oldValue) {
-              if (newValue !== oldValue) {
-                return _this.setChildScope(childScope, newValue);
-              }
-            };
-          })(this), true);
-          childScope["static"] = this.scope["static"];
-          child = new PolylineChildModel(childScope, this.attrs, gMap, this.defaults, model);
-          if (model[this.idKey] == null) {
-            this.$log.error("Polyline model has no id to assign a child to.\nThis is required for performance. Please assign id,\nor redirect id to a different key.");
-            return;
-          }
-          this.plurals.put(model[this.idKey], child);
-          return child;
-        };
-
-        PolylinesParentModel.prototype.setChildScope = function(childScope, model) {
-          _.each(this.scopePropNames, (function(_this) {
-            return function(name) {
-              var nameKey, newValue;
-              nameKey = name + 'Key';
-              newValue = _this[nameKey] === 'self' ? model : model[_this[nameKey]];
-              if (newValue !== childScope[name]) {
-                return childScope[name] = newValue;
-              }
-            };
-          })(this));
-          return childScope.model = model;
-        };
-
-        PolylinesParentModel.prototype.modelKeyComparison = function(model1, model2) {
-          return _.isEqual(this.evalModelHandle(model1, this.scope.path), this.evalModelHandle(model2, this.scope.path));
-        };
-
-        return PolylinesParentModel;
-
-      })(ModelKey);
-    }
-  ]);
-
-}).call(this);
-;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+(function() {
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api.models.parent').factory('uiGmapRectangleParentModel', [
     'uiGmapLogger', 'uiGmapGmapUtil', 'uiGmapEventsHelper', 'uiGmapRectangleOptionsBuilder', function($log, GmapUtil, EventsHelper, Builder) {
       var RectangleParentModel;
-      return RectangleParentModel = (function(_super) {
-        __extends(RectangleParentModel, _super);
+      return RectangleParentModel = (function(superClass) {
+        extend(RectangleParentModel, superClass);
 
         RectangleParentModel.include(GmapUtil);
 
         RectangleParentModel.include(EventsHelper);
 
-        function RectangleParentModel(scope, element, attrs, map, DEFAULTS) {
-          var bounds, clear, createBounds, dragging, fit, init, listeners, myListeners, rectangle, settingBoundsFromScope, updateBounds;
+        function RectangleParentModel(scope, element, attrs, gMap, DEFAULTS) {
+          var bounds, clear, createBounds, dragging, fit, gObject, init, listeners, myListeners, settingBoundsFromScope, updateBounds;
           this.scope = scope;
           this.attrs = attrs;
-          this.map = map;
+          this.gMap = gMap;
           this.DEFAULTS = DEFAULTS;
           bounds = void 0;
           dragging = false;
@@ -4939,40 +5335,40 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           listeners = void 0;
           fit = (function(_this) {
             return function() {
-              if (_this.isTrue(attrs.fit)) {
-                return _this.fitMapBounds(_this.map, bounds);
+              if (_this.isTrue(_this.attrs.fit)) {
+                return _this.fitMapBounds(_this.gMap, bounds);
               }
             };
           })(this);
           createBounds = (function(_this) {
             return function() {
-              var _ref, _ref1;
-              if ((scope.bounds != null) && (((_ref = scope.bounds) != null ? _ref.sw : void 0) != null) && (((_ref1 = scope.bounds) != null ? _ref1.ne : void 0) != null) && _this.validateBoundPoints(scope.bounds)) {
-                bounds = _this.convertBoundPoints(scope.bounds);
-                return $log.info("new new bounds created: " + rectangle);
-              } else if ((scope.bounds.getNorthEast != null) && (scope.bounds.getSouthWest != null)) {
-                return bounds = scope.bounds;
+              var ref, ref1, ref2;
+              if ((_this.scope.bounds != null) && (((ref = _this.scope.bounds) != null ? ref.sw : void 0) != null) && (((ref1 = _this.scope.bounds) != null ? ref1.ne : void 0) != null) && _this.validateBoundPoints(_this.scope.bounds)) {
+                bounds = _this.convertBoundPoints(_this.scope.bounds);
+                return $log.info("new new bounds created: " + (JSON.stringify(bounds)));
+              } else if ((_this.scope.bounds.getNorthEast != null) && (_this.scope.bounds.getSouthWest != null)) {
+                return bounds = _this.scope.bounds;
               } else {
-                if (typeof bound !== "undefined" && bound !== null) {
-                  return $log.error("Invalid bounds for newValue: " + (JSON.stringify(scope.bounds)));
+                if (_this.scope.bounds != null) {
+                  return $log.error("Invalid bounds for newValue: " + (JSON.stringify((ref2 = _this.scope) != null ? ref2.bounds : void 0)));
                 }
               }
             };
           })(this);
           createBounds();
-          rectangle = new google.maps.Rectangle(this.buildOpts(bounds));
-          $log.info("rectangle created: " + rectangle);
+          gObject = new google.maps.Rectangle(this.buildOpts(bounds));
+          $log.info("gObject (rectangle) created: " + gObject);
           settingBoundsFromScope = false;
           updateBounds = (function(_this) {
             return function() {
               var b, ne, sw;
-              b = rectangle.getBounds();
+              b = gObject.getBounds();
               ne = b.getNorthEast();
               sw = b.getSouthWest();
               if (settingBoundsFromScope) {
                 return;
               }
-              return scope.$evalAsync(function(s) {
+              return _this.scope.$evalAsync(function(s) {
                 if ((s.bounds != null) && (s.bounds.sw != null) && (s.bounds.ne != null)) {
                   s.bounds.ne = {
                     latitude: ne.lat(),
@@ -4993,14 +5389,14 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             return function() {
               fit();
               _this.removeEvents(myListeners);
-              myListeners.push(google.maps.event.addListener(rectangle, 'dragstart', function() {
+              myListeners.push(google.maps.event.addListener(gObject, 'dragstart', function() {
                 return dragging = true;
               }));
-              myListeners.push(google.maps.event.addListener(rectangle, 'dragend', function() {
+              myListeners.push(google.maps.event.addListener(gObject, 'dragend', function() {
                 dragging = false;
                 return updateBounds();
               }));
-              return myListeners.push(google.maps.event.addListener(rectangle, 'bounds_changed', function() {
+              return myListeners.push(google.maps.event.addListener(gObject, 'bounds_changed', function() {
                 if (dragging) {
                   return;
                 }
@@ -5014,13 +5410,13 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
               if (listeners != null) {
                 _this.removeEvents(listeners);
               }
-              return rectangle.setMap(null);
+              return gObject.setMap(null);
             };
           })(this);
           if (bounds != null) {
             init();
           }
-          scope.$watch('bounds', (function(newValue, oldValue) {
+          this.scope.$watch('bounds', (function(newValue, oldValue) {
             var isNew;
             if (_.isEqual(newValue, oldValue) && (bounds != null) || dragging) {
               return;
@@ -5036,7 +5432,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
               fit();
             }
             createBounds();
-            rectangle.setBounds(bounds);
+            gObject.setBounds(bounds);
             settingBoundsFromScope = false;
             if (isNew && (bounds != null)) {
               return init();
@@ -5046,31 +5442,29 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             return function(newVals, oldVals) {
               if (!_.isEqual(newVals, oldVals)) {
                 if ((bounds != null) && (newVals != null)) {
-                  return rectangle.setOptions(_this.buildOpts(bounds));
+                  return gObject.setOptions(_this.buildOpts(bounds));
                 }
               }
             };
           })(this);
           this.props.push('bounds');
           this.watchProps(this.props);
-          if (attrs.events != null) {
-            listeners = this.setEvents(rectangle, scope, scope);
-            scope.$watch('events', (function(_this) {
+          if (this.attrs.events != null) {
+            listeners = this.setEvents(gObject, this.scope, this.scope);
+            this.scope.$watch('events', (function(_this) {
               return function(newValue, oldValue) {
                 if (!_.isEqual(newValue, oldValue)) {
                   if (listeners != null) {
                     _this.removeEvents(listeners);
                   }
-                  return listeners = _this.setEvents(rectangle, scope, scope);
+                  return listeners = _this.setEvents(gObject, _this.scope, _this.scope);
                 }
               };
             })(this));
           }
-          scope.$on('$destroy', (function(_this) {
-            return function() {
-              return clear();
-            };
-          })(this));
+          this.scope.$on('$destroy', function() {
+            return clear();
+          });
           $log.info(this);
         }
 
@@ -5081,16 +5475,19 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global angular:true, google:true */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api.models.parent').factory('uiGmapSearchBoxParentModel', [
-    'uiGmapBaseObject', 'uiGmapLogger', 'uiGmapEventsHelper', '$timeout', '$http', '$templateCache', function(BaseObject, Logger, EventsHelper, $timeout, $http, $templateCache) {
+    'uiGmapBaseObject', 'uiGmapLogger', 'uiGmapEventsHelper', function(BaseObject, Logger, EventsHelper) {
       var SearchBoxParentModel;
-      SearchBoxParentModel = (function(_super) {
-        __extends(SearchBoxParentModel, _super);
+      SearchBoxParentModel = (function(superClass) {
+        extend(SearchBoxParentModel, superClass);
 
         SearchBoxParentModel.include(EventsHelper);
 
@@ -5103,13 +5500,13 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           this.ctrlPosition = ctrlPosition;
           this.template = template;
           this.$log = $log != null ? $log : Logger;
-          this.setVisibility = __bind(this.setVisibility, this);
-          this.getBounds = __bind(this.getBounds, this);
-          this.setBounds = __bind(this.setBounds, this);
-          this.createSearchBox = __bind(this.createSearchBox, this);
-          this.addToParentDiv = __bind(this.addToParentDiv, this);
-          this.addAsMapControl = __bind(this.addAsMapControl, this);
-          this.init = __bind(this.init, this);
+          this.setVisibility = bind(this.setVisibility, this);
+          this.getBounds = bind(this.getBounds, this);
+          this.setBounds = bind(this.setBounds, this);
+          this.createSearchBox = bind(this.createSearchBox, this);
+          this.addToParentDiv = bind(this.addToParentDiv, this);
+          this.addAsMapControl = bind(this.addAsMapControl, this);
+          this.init = bind(this.init, this);
           if (this.attrs.template == null) {
             this.$log.error('template attribute for the search-box directive is mandatory. Places Search Box creation aborted!!');
             return;
@@ -5121,7 +5518,11 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           if (angular.isUndefined(this.scope.options.visible)) {
             this.scope.options.visible = true;
           }
-          this.visible = scope.options.visible;
+          if (angular.isUndefined(this.scope.options.autocomplete)) {
+            this.scope.options.autocomplete = false;
+          }
+          this.visible = this.scope.options.visible;
+          this.autocomplete = this.scope.options.autocomplete;
           controlDiv = angular.element('<div></div>');
           controlDiv.append(this.template);
           this.input = controlDiv.find('input')[0];
@@ -5149,16 +5550,34 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           } else {
             this.addAsMapControl();
           }
-          this.listener = google.maps.event.addListener(this.searchBox, 'places_changed', (function(_this) {
+          if (!this.visible) {
+            this.setVisibility(this.visible);
+          }
+          if (this.autocomplete) {
+            this.listener = google.maps.event.addListener(this.gObject, 'place_changed', (function(_this) {
+              return function() {
+                return _this.places = _this.gObject.getPlace();
+              };
+            })(this));
+          } else {
+            this.listener = google.maps.event.addListener(this.gObject, 'places_changed', (function(_this) {
+              return function() {
+                return _this.places = _this.gObject.getPlaces();
+              };
+            })(this));
+          }
+          this.listeners = this.setEvents(this.gObject, this.scope, this.scope);
+          this.$log.info(this);
+          this.scope.$on('$stateChangeSuccess', (function(_this) {
             return function() {
-              return _this.places = _this.searchBox.getPlaces();
+              if (_this.attrs.parentdiv != null) {
+                return _this.addToParentDiv();
+              }
             };
           })(this));
-          this.listeners = this.setEvents(this.searchBox, this.scope, this.scope);
-          this.$log.info(this);
           return this.scope.$on('$destroy', (function(_this) {
             return function() {
-              return _this.searchBox = null;
+              return _this.gObject = null;
             };
           })(this));
         };
@@ -5168,12 +5587,19 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         };
 
         SearchBoxParentModel.prototype.addToParentDiv = function() {
+          var ref;
           this.parentDiv = angular.element(document.getElementById(this.scope.parentdiv));
-          return this.parentDiv.append(this.input);
+          if ((ref = this.parentDiv) != null ? ref.length : void 0) {
+            return this.parentDiv.append(this.input);
+          }
         };
 
         SearchBoxParentModel.prototype.createSearchBox = function() {
-          return this.searchBox = new google.maps.places.SearchBox(this.input, this.scope.options);
+          if (this.autocomplete) {
+            return this.gObject = new google.maps.places.Autocomplete(this.input, this.scope.options);
+          } else {
+            return this.gObject = new google.maps.places.SearchBox(this.input, this.scope.options);
+          }
         };
 
         SearchBoxParentModel.prototype.setBounds = function(bounds) {
@@ -5181,15 +5607,15 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             this.$log.error('Error: SearchBoxParentModel setBounds. Bounds not an instance of LatLngBounds.');
           } else {
             if (bounds.isEmpty() === false) {
-              if (this.searchBox != null) {
-                return this.searchBox.setBounds(bounds);
+              if (this.gObject != null) {
+                return this.gObject.setBounds(bounds);
               }
             }
           }
         };
 
         SearchBoxParentModel.prototype.getBounds = function() {
-          return this.searchBox.getBounds();
+          return this.gObject.getBounds();
         };
 
         SearchBoxParentModel.prototype.setVisibility = function(val) {
@@ -5218,51 +5644,54 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;
+/*global _,angular */
+
+
 /*
 	WindowsChildModel generator where there are many ChildModels to a parent.
  */
 
 (function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api.models.parent').factory('uiGmapWindowsParentModel', [
-    'uiGmapIWindowParentModel', 'uiGmapModelsWatcher', 'uiGmapPropMap', 'uiGmapWindowChildModel', 'uiGmapLinked', 'uiGmap_async', 'uiGmapLogger', '$timeout', '$compile', '$http', '$templateCache', '$interpolate', 'uiGmapPromise', function(IWindowParentModel, ModelsWatcher, PropMap, WindowChildModel, Linked, _async, $log, $timeout, $compile, $http, $templateCache, $interpolate, uiGmapPromise) {
+    'uiGmapIWindowParentModel', 'uiGmapModelsWatcher', 'uiGmapPropMap', 'uiGmapWindowChildModel', 'uiGmapLinked', 'uiGmap_async', 'uiGmapLogger', '$timeout', '$compile', '$http', '$templateCache', '$interpolate', 'uiGmapPromise', 'uiGmapIWindow', 'uiGmapGmapUtil', function(IWindowParentModel, ModelsWatcher, PropMap, WindowChildModel, Linked, _async, $log, $timeout, $compile, $http, $templateCache, $interpolate, uiGmapPromise, IWindow, GmapUtil) {
       var WindowsParentModel;
-      WindowsParentModel = (function(_super) {
-        __extends(WindowsParentModel, _super);
+      WindowsParentModel = (function(superClass) {
+        extend(WindowsParentModel, superClass);
 
         WindowsParentModel.include(ModelsWatcher);
 
-        function WindowsParentModel(scope, element, attrs, ctrls, gMap, markersScope) {
-          this.gMap = gMap;
+        function WindowsParentModel(scope, element, attrs, ctrls, gMap1, markersScope) {
+          this.gMap = gMap1;
           this.markersScope = markersScope;
-          this.interpolateContent = __bind(this.interpolateContent, this);
-          this.setChildScope = __bind(this.setChildScope, this);
-          this.createWindow = __bind(this.createWindow, this);
-          this.setContentKeys = __bind(this.setContentKeys, this);
-          this.pieceMealWindows = __bind(this.pieceMealWindows, this);
-          this.createAllNewWindows = __bind(this.createAllNewWindows, this);
-          this.watchIdKey = __bind(this.watchIdKey, this);
-          this.createChildScopesWindows = __bind(this.createChildScopesWindows, this);
-          this.watchOurScope = __bind(this.watchOurScope, this);
-          this.watchDestroy = __bind(this.watchDestroy, this);
-          this.onDestroy = __bind(this.onDestroy, this);
-          this.rebuildAll = __bind(this.rebuildAll, this);
-          this.doINeedToWipe = __bind(this.doINeedToWipe, this);
-          this.watchModels = __bind(this.watchModels, this);
-          this.go = __bind(this.go, this);
+          this.modelKeyComparison = bind(this.modelKeyComparison, this);
+          this.interpolateContent = bind(this.interpolateContent, this);
+          this.setChildScope = bind(this.setChildScope, this);
+          this.createWindow = bind(this.createWindow, this);
+          this.setContentKeys = bind(this.setContentKeys, this);
+          this.pieceMeal = bind(this.pieceMeal, this);
+          this.createAllNew = bind(this.createAllNew, this);
+          this.watchIdKey = bind(this.watchIdKey, this);
+          this.createChildScopes = bind(this.createChildScopes, this);
+          this.watchOurScope = bind(this.watchOurScope, this);
+          this.watchDestroy = bind(this.watchDestroy, this);
+          this.onDestroy = bind(this.onDestroy, this);
+          this.rebuildAll = bind(this.rebuildAll, this);
+          this.doINeedToWipe = bind(this.doINeedToWipe, this);
+          this.watchModels = bind(this.watchModels, this);
+          this.go = bind(this.go, this);
           WindowsParentModel.__super__.constructor.call(this, scope, element, attrs, ctrls, $timeout, $compile, $http, $templateCache);
-          this.windows = new PropMap();
-          this.scopePropNames = ['coords', 'template', 'templateUrl', 'templateParameter', 'isIconVisibleOnClick', 'closeClick', 'options', 'show'];
-          _.each(this.scopePropNames, (function(_this) {
+          this["interface"] = IWindow;
+          this.plurals = new PropMap();
+          _.each(IWindow.scopeKeys, (function(_this) {
             return function(name) {
               return _this[name + 'Key'] = void 0;
             };
           })(this));
           this.linked = new Linked(scope, element, attrs, ctrls);
-          this.models = void 0;
           this.contentKeys = void 0;
           this.isIconVisibleOnClick = void 0;
           this.firstTime = true;
@@ -5282,12 +5711,12 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
               }
             };
           })(this));
-          return this.createChildScopesWindows();
+          return this.createChildScopes();
         };
 
         WindowsParentModel.prototype.watchModels = function(scope) {
           var itemToWatch;
-          itemToWatch = this.markersScope != null ? 'markerModelsUpdate' : 'models';
+          itemToWatch = this.markersScope != null ? 'pluralsUpdate' : 'models';
           return scope.$watch(itemToWatch, (function(_this) {
             return function(newValue, oldValue) {
               var doScratch;
@@ -5296,13 +5725,13 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
                 if (_this.doRebuildAll || _this.doINeedToWipe(scope.models)) {
                   return _this.rebuildAll(scope, true, true);
                 } else {
-                  doScratch = _this.windows.length === 0;
+                  doScratch = _this.plurals.length === 0;
                   if (_this.existingPieces != null) {
                     return _.last(_this.existingPieces._content).then(function() {
-                      return _this.createChildScopesWindows(doScratch);
+                      return _this.createChildScopes(doScratch);
                     });
                   } else {
-                    return _this.createChildScopesWindows(doScratch);
+                    return _this.createChildScopes(doScratch);
                   }
                 }
               }
@@ -5313,29 +5742,28 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         WindowsParentModel.prototype.doINeedToWipe = function(newValue) {
           var newValueIsEmpty;
           newValueIsEmpty = newValue != null ? newValue.length === 0 : true;
-          return this.windows.length > 0 && newValueIsEmpty;
+          return this.plurals.length > 0 && newValueIsEmpty;
         };
 
         WindowsParentModel.prototype.rebuildAll = function(scope, doCreate, doDelete) {
           return this.onDestroy(doDelete).then((function(_this) {
             return function() {
               if (doCreate) {
-                return _this.createChildScopesWindows();
+                return _this.createChildScopes();
               }
             };
           })(this));
         };
 
-        WindowsParentModel.prototype.onDestroy = function(doDelete) {
+        WindowsParentModel.prototype.onDestroy = function(scope) {
+          WindowsParentModel.__super__.onDestroy.call(this, this.scope);
           return _async.promiseLock(this, uiGmapPromise.promiseTypes["delete"], void 0, void 0, (function(_this) {
             return function() {
-              return _async.each(_this.windows.values(), function(child) {
-                return child.destroy();
-              }, false).then(function() {
-                if (doDelete) {
-                  delete _this.windows;
-                }
-                return _this.windows = new PropMap();
+              return _async.each(_this.plurals.values(), function(child) {
+                return child.destroy(true);
+              }, _async.chunkSizeFrom(_this.scope.cleanchunk, false)).then(function() {
+                var ref;
+                return (ref = _this.plurals) != null ? ref.removeAll() : void 0;
               });
             };
           })(this));
@@ -5352,7 +5780,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         };
 
         WindowsParentModel.prototype.watchOurScope = function(scope) {
-          return _.each(this.scopePropNames, (function(_this) {
+          return _.each(IWindow.scopeKeys, (function(_this) {
             return function(name) {
               var nameKey;
               nameKey = name + 'Key';
@@ -5361,8 +5789,8 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           })(this));
         };
 
-        WindowsParentModel.prototype.createChildScopesWindows = function(isCreatingFromScratch) {
-          var modelsNotDefined, _ref, _ref1;
+        WindowsParentModel.prototype.createChildScopes = function(isCreatingFromScratch) {
+          var modelsNotDefined, ref, ref1;
           if (isCreatingFromScratch == null) {
             isCreatingFromScratch = true;
           }
@@ -5379,7 +5807,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             this.isIconVisibleOnClick = this.linked.scope.isIconVisibleOnClick;
           }
           modelsNotDefined = angular.isUndefined(this.linked.scope.models);
-          if (modelsNotDefined && (this.markersScope === void 0 || (((_ref = this.markersScope) != null ? _ref.markerModels : void 0) === void 0 || ((_ref1 = this.markersScope) != null ? _ref1.models : void 0) === void 0))) {
+          if (modelsNotDefined && (this.markersScope === void 0 || (((ref = this.markersScope) != null ? ref.plurals : void 0) === void 0 || ((ref1 = this.markersScope) != null ? ref1.models : void 0) === void 0))) {
             this.$log.error('No models to create windows from! Need direct models or models derived from markers!');
             return;
           }
@@ -5387,17 +5815,17 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             if (this.linked.scope.models != null) {
               this.watchIdKey(this.linked.scope);
               if (isCreatingFromScratch) {
-                return this.createAllNewWindows(this.linked.scope, false);
+                return this.createAllNew(this.linked.scope, false);
               } else {
-                return this.pieceMealWindows(this.linked.scope, false);
+                return this.pieceMeal(this.linked.scope, false);
               }
             } else {
               this.parentScope = this.markersScope;
               this.watchIdKey(this.parentScope);
               if (isCreatingFromScratch) {
-                return this.createAllNewWindows(this.markersScope, true, 'markerModels', false);
+                return this.createAllNew(this.markersScope, true, 'plurals', false);
               } else {
-                return this.pieceMealWindows(this.markersScope, true, 'markerModels', false);
+                return this.pieceMeal(this.markersScope, true, 'plurals', false);
               }
             }
           }
@@ -5415,7 +5843,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           })(this));
         };
 
-        WindowsParentModel.prototype.createAllNewWindows = function(scope, hasGMarker, modelsPropToIterate, isArray) {
+        WindowsParentModel.prototype.createAllNew = function(scope, hasGMarker, modelsPropToIterate, isArray) {
           var maybeCanceled;
           if (modelsPropToIterate == null) {
             modelsPropToIterate = 'models';
@@ -5423,7 +5851,6 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           if (isArray == null) {
             isArray = false;
           }
-          this.models = scope.models;
           if (this.firstTime) {
             this.watchModels(scope);
             this.watchDestroy(scope);
@@ -5433,13 +5860,13 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             return;
           }
           maybeCanceled = null;
-          return _async.promiseLock(this, uiGmapPromise.promiseTypes.create, 'createAllNewWindows', (function(canceledMsg) {
+          return _async.promiseLock(this, uiGmapPromise.promiseTypes.create, 'createAllNew', (function(canceledMsg) {
             return maybeCanceled = canceledMsg;
           }), (function(_this) {
             return function() {
               return _async.each(scope.models, function(model) {
-                var gMarker, _ref;
-                gMarker = hasGMarker ? (_ref = _this.getItem(scope, modelsPropToIterate, model[_this.idKey])) != null ? _ref.gMarker : void 0 : void 0;
+                var gMarker, ref;
+                gMarker = hasGMarker ? (ref = _this.getItem(scope, modelsPropToIterate, model[_this.idKey])) != null ? ref.gObject : void 0 : void 0;
                 if (!maybeCanceled) {
                   if (!gMarker && _this.markersScope) {
                     $log.error('Unable to get gMarker from markersScope!');
@@ -5454,7 +5881,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           })(this));
         };
 
-        WindowsParentModel.prototype.pieceMealWindows = function(scope, hasGMarker, modelsPropToIterate, isArray) {
+        WindowsParentModel.prototype.pieceMeal = function(scope, hasGMarker, modelsPropToIterate, isArray) {
           var maybeCanceled, payload;
           if (modelsPropToIterate == null) {
             modelsPropToIterate = 'models';
@@ -5467,19 +5894,18 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           }
           maybeCanceled = null;
           payload = null;
-          this.models = scope.models;
-          if ((scope != null) && (scope.models != null) && scope.models.length > 0 && this.windows.length > 0) {
+          if ((scope != null) && this.modelsLength() && this.plurals.length) {
             return _async.promiseLock(this, uiGmapPromise.promiseTypes.update, 'pieceMeal', (function(canceledMsg) {
               return maybeCanceled = canceledMsg;
             }), (function(_this) {
               return function() {
                 return uiGmapPromise.promise((function() {
-                  return _this.figureOutState(_this.idKey, scope, _this.windows, _this.modelKeyComparison);
+                  return _this.figureOutState(_this.idKey, scope, _this.plurals, _this.modelKeyComparison);
                 })).then(function(state) {
                   payload = state;
                   return _async.each(payload.removals, function(child) {
                     if (child != null) {
-                      _this.windows.remove(child.id);
+                      _this.plurals.remove(child.id);
                       if (child.destroy != null) {
                         child.destroy(true);
                       }
@@ -5488,31 +5914,36 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
                   }, _async.chunkSizeFrom(scope.chunk));
                 }).then(function() {
                   return _async.each(payload.adds, function(modelToAdd) {
-                    var gMarker, _ref;
-                    gMarker = (_ref = _this.getItem(scope, modelsPropToIterate, modelToAdd[_this.idKey])) != null ? _ref.gMarker : void 0;
+                    var gMarker, ref;
+                    gMarker = (ref = _this.getItem(scope, modelsPropToIterate, modelToAdd[_this.idKey])) != null ? ref.gObject : void 0;
                     if (!gMarker) {
                       throw 'Gmarker undefined';
                     }
                     _this.createWindow(modelToAdd, gMarker, _this.gMap);
                     return maybeCanceled;
                   });
+                }).then(function() {
+                  return _async.each(payload.updates, function(update) {
+                    _this.updateChild(update.child, update.model);
+                    return maybeCanceled;
+                  }, _async.chunkSizeFrom(scope.chunk));
                 });
               };
             })(this));
           } else {
-            $log.debug('pieceMealWindows: rebuildAll');
+            $log.debug('pieceMeal: rebuildAll');
             return this.rebuildAll(this.scope, true, true);
           }
         };
 
         WindowsParentModel.prototype.setContentKeys = function(models) {
-          if (models.length > 0) {
+          if (this.modelsLength(models)) {
             return this.contentKeys = Object.keys(models[0]);
           }
         };
 
         WindowsParentModel.prototype.createWindow = function(model, gMarker, gMap) {
-          var child, childScope, fakeElement, opts, _ref, _ref1;
+          var child, childScope, fakeElement, opts, ref, ref1;
           childScope = this.linked.scope.$new(false);
           this.setChildScope(childScope, model);
           childScope.$watch('model', (function(_this) {
@@ -5531,17 +5962,28 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           };
           this.DEFAULTS = this.scopeOrModelVal(this.optionsKey, this.scope, model) || {};
           opts = this.createWindowOptions(gMarker, childScope, fakeElement.html(), this.DEFAULTS);
-          child = new WindowChildModel(model, childScope, opts, this.isIconVisibleOnClick, gMap, (_ref = this.markersScope) != null ? (_ref1 = _ref.markerModels.get(model[this.idKey])) != null ? _ref1.scope : void 0 : void 0, fakeElement, false, true);
+          child = new WindowChildModel({
+            model: model,
+            scope: childScope,
+            opts: opts,
+            isIconVisibleOnClick: this.isIconVisibleOnClick,
+            gMap: gMap,
+            markerScope: (ref = this.markersScope) != null ? (ref1 = ref.plurals.get(model[this.idKey])) != null ? ref1.scope : void 0 : void 0,
+            element: fakeElement,
+            needToManualDestroy: false,
+            markerIsVisibleAfterWindowClose: true,
+            isScopeModel: true
+          });
           if (model[this.idKey] == null) {
             this.$log.error('Window model has no id to assign a child to. This is required for performance. Please assign id, or redirect id to a different key.');
             return;
           }
-          this.windows.put(model[this.idKey], child);
+          this.plurals.put(model[this.idKey], child);
           return child;
         };
 
         WindowsParentModel.prototype.setChildScope = function(childScope, model) {
-          _.each(this.scopePropNames, (function(_this) {
+          _.each(IWindow.scopeKeys, (function(_this) {
             return function(name) {
               var nameKey, newValue;
               nameKey = name + 'Key';
@@ -5555,18 +5997,36 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         };
 
         WindowsParentModel.prototype.interpolateContent = function(content, model) {
-          var exp, interpModel, key, _i, _len, _ref;
+          var exp, i, interpModel, key, len, ref;
           if (this.contentKeys === void 0 || this.contentKeys.length === 0) {
             return;
           }
           exp = $interpolate(content);
           interpModel = {};
-          _ref = this.contentKeys;
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            key = _ref[_i];
+          ref = this.contentKeys;
+          for (i = 0, len = ref.length; i < len; i++) {
+            key = ref[i];
             interpModel[key] = model[key];
           }
           return exp(interpModel);
+        };
+
+        WindowsParentModel.prototype.modelKeyComparison = function(model1, model2) {
+          var isEqual, scope;
+          scope = this.scope.coords != null ? this.scope : this.parentScope;
+          if (scope == null) {
+            throw 'No scope or parentScope set!';
+          }
+          isEqual = GmapUtil.equalCoords(this.evalModelHandle(model1, scope.coords), this.evalModelHandle(model2, scope.coords));
+          if (!isEqual) {
+            return isEqual;
+          }
+          isEqual = _.every(_.without(this["interface"].scopeKeys, 'coords'), (function(_this) {
+            return function(k) {
+              return _this.evalModelHandle(model1, scope[k]) === _this.evalModelHandle(model2, scope[k]);
+            };
+          })(this));
+          return isEqual;
         };
 
         return WindowsParentModel;
@@ -5577,16 +6037,17 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
+;
+/*global angular, _ */
+
+(function() {
   angular.module("uiGmapgoogle-maps.directives.api").factory("uiGmapCircle", [
     "uiGmapICircle", "uiGmapCircleParentModel", function(ICircle, CircleParentModel) {
       return _.extend(ICircle, {
         link: function(scope, element, attrs, mapCtrl) {
-          return mapCtrl.getScope().deferred.promise.then((function(_this) {
-            return function(map) {
-              return new CircleParentModel(scope, element, attrs, map);
-            };
-          })(this));
+          return mapCtrl.getScope().deferred.promise.then(function(gMap) {
+            return new CircleParentModel(scope, element, attrs, gMap);
+          });
         }
       });
     }
@@ -5594,18 +6055,18 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module("uiGmapgoogle-maps.directives.api").factory("uiGmapControl", [
     "uiGmapIControl", "$http", "$templateCache", "$compile", "$controller", 'uiGmapGoogleMapApi', function(IControl, $http, $templateCache, $compile, $controller, GoogleMapApi) {
       var Control;
-      return Control = (function(_super) {
-        __extends(Control, _super);
+      return Control = (function(superClass) {
+        extend(Control, superClass);
 
         function Control() {
-          this.link = __bind(this.link, this);
+          this.link = bind(this.link, this);
           Control.__super__.constructor.call(this);
         }
 
@@ -5660,7 +6121,10 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
+;
+/*globals angular, _ */
+
+(function() {
   angular.module('uiGmapgoogle-maps.directives.api').service('uiGmapDragZoom', [
     'uiGmapCtrlHandle', 'uiGmapPropertyAction', function(CtrlHandle, PropertyAction) {
       return {
@@ -5683,10 +6147,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           return CtrlHandle.mapPromise(scope, ctrl).then(function(map) {
             var enableKeyDragZoom, setKeyAction, setOptionsAction;
             enableKeyDragZoom = function(opts) {
-              map.enableKeyDragZoom(opts);
-              if (scope.spec) {
-                return scope.spec.enableKeyDragZoom(opts);
-              }
+              return map.enableKeyDragZoom(opts);
             };
             setKeyAction = new PropertyAction(function(key, newVal) {
               if (newVal) {
@@ -5702,9 +6163,9 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
                 return enableKeyDragZoom(newVal);
               }
             });
-            scope.$watch('keyboardkey', setKeyAction.sic);
+            scope.$watch('keyboardkey', setKeyAction.sic('keyboardkey'));
             setKeyAction.sic(scope.keyboardkey);
-            scope.$watch('options', setOptionsAction.sic);
+            scope.$watch('options', setOptionsAction.sic('options'));
             return setOptionsAction.sic(scope.options);
           });
         }
@@ -5735,18 +6196,18 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
  */
 
 (function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapApiFreeDrawPolygons', [
     'uiGmapLogger', 'uiGmapBaseObject', 'uiGmapCtrlHandle', 'uiGmapDrawFreeHandChildModel', 'uiGmapLodash', function($log, BaseObject, CtrlHandle, DrawFreeHandChildModel, uiGmapLodash) {
       var FreeDrawPolygons;
-      return FreeDrawPolygons = (function(_super) {
-        __extends(FreeDrawPolygons, _super);
+      return FreeDrawPolygons = (function(superClass) {
+        extend(FreeDrawPolygons, superClass);
 
         function FreeDrawPolygons() {
-          this.link = __bind(this.link, this);
+          this.link = bind(this.link, this);
           return FreeDrawPolygons.__super__.constructor.apply(this, arguments);
         }
 
@@ -5760,8 +6221,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
         FreeDrawPolygons.prototype.scope = {
           polygons: '=',
-          draw: '=',
-          revertmapoptions: '='
+          draw: '='
         };
 
         FreeDrawPolygons.prototype.link = function(scope, element, attrs, ctrl) {
@@ -5774,7 +6234,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
               if (!_.isArray(scope.polygons)) {
                 return $log.error('Free Draw Polygons must be of type Array!');
               }
-              freeHand = new DrawFreeHandChildModel(map, scope.revertmapoptions);
+              freeHand = new DrawFreeHandChildModel(map, ctrl.getScope());
               listener = void 0;
               return scope.draw = function() {
                 if (typeof listener === "function") {
@@ -5827,7 +6287,9 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           geodesic: "=",
           icons: "=icons",
           visible: "=",
-          events: "="
+          events: "=",
+          control: "=",
+          zIndex: "=zindex"
         }
       };
     }
@@ -5846,14 +6308,14 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
  */
 
 (function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module("uiGmapgoogle-maps.directives.api").factory("uiGmapIControl", [
     "uiGmapBaseObject", "uiGmapLogger", "uiGmapCtrlHandle", function(BaseObject, Logger, CtrlHandle) {
       var IControl;
-      return IControl = (function(_super) {
-        __extends(IControl, _super);
+      return IControl = (function(superClass) {
+        extend(IControl, superClass);
 
         IControl.extend(CtrlHandle);
 
@@ -5900,16 +6362,16 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapIMarker', [
     'uiGmapBaseObject', 'uiGmapCtrlHandle', function(BaseObject, CtrlHandle) {
       var IMarker;
-      return IMarker = (function(_super) {
-        __extends(IMarker, _super);
+      return IMarker = (function(superClass) {
+        extend(IMarker, superClass);
 
-        IMarker.scopeKeys = {
+        IMarker.scope = {
           coords: '=coords',
           icon: '=icon',
           click: '&click',
@@ -5920,7 +6382,9 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           control: '=control'
         };
 
-        IMarker.keys = _.keys(IMarker.scopeKeys);
+        IMarker.scopeKeys = _.keys(IMarker.scope);
+
+        IMarker.keys = IMarker.scopeKeys;
 
         IMarker.extend(CtrlHandle);
 
@@ -5930,7 +6394,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           this.priority = -1;
           this.transclude = true;
           this.replace = true;
-          this.scope = _.extend(this.scope || {}, IMarker.scopeKeys);
+          this.scope = _.extend(this.scope || {}, IMarker.scope);
         }
 
         return IMarker;
@@ -5941,28 +6405,16 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapIPolygon', [
     'uiGmapGmapUtil', 'uiGmapBaseObject', 'uiGmapLogger', 'uiGmapCtrlHandle', function(GmapUtil, BaseObject, Logger, CtrlHandle) {
       var IPolygon;
-      return IPolygon = (function(_super) {
-        __extends(IPolygon, _super);
+      return IPolygon = (function(superClass) {
+        extend(IPolygon, superClass);
 
-        IPolygon.include(GmapUtil);
-
-        IPolygon.extend(CtrlHandle);
-
-        function IPolygon() {}
-
-        IPolygon.prototype.restrict = 'EMA';
-
-        IPolygon.prototype.replace = true;
-
-        IPolygon.prototype.require = '^' + 'uiGmapGoogleMap';
-
-        IPolygon.prototype.scope = {
+        IPolygon.scope = {
           path: '=path',
           stroke: '=stroke',
           clickable: '=',
@@ -5979,6 +6431,22 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           control: '=control'
         };
 
+        IPolygon.scopeKeys = _.keys(IPolygon.scope);
+
+        IPolygon.include(GmapUtil);
+
+        IPolygon.extend(CtrlHandle);
+
+        function IPolygon() {}
+
+        IPolygon.prototype.restrict = 'EMA';
+
+        IPolygon.prototype.replace = true;
+
+        IPolygon.prototype.require = '^' + 'uiGmapGoogleMap';
+
+        IPolygon.prototype.scope = IPolygon.scope;
+
         IPolygon.prototype.DEFAULTS = {};
 
         IPolygon.prototype.$log = Logger;
@@ -5991,14 +6459,31 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapIPolyline', [
     'uiGmapGmapUtil', 'uiGmapBaseObject', 'uiGmapLogger', 'uiGmapCtrlHandle', function(GmapUtil, BaseObject, Logger, CtrlHandle) {
       var IPolyline;
-      return IPolyline = (function(_super) {
-        __extends(IPolyline, _super);
+      return IPolyline = (function(superClass) {
+        extend(IPolyline, superClass);
+
+        IPolyline.scope = {
+          path: '=',
+          stroke: '=',
+          clickable: '=',
+          draggable: '=',
+          editable: '=',
+          geodesic: '=',
+          icons: '=',
+          visible: '=',
+          "static": '=',
+          fit: '=',
+          events: '=',
+          zIndex: '=zindex'
+        };
+
+        IPolyline.scopeKeys = _.keys(IPolyline.scope);
 
         IPolyline.include(GmapUtil);
 
@@ -6012,19 +6497,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
         IPolyline.prototype.require = '^' + 'uiGmapGoogleMap';
 
-        IPolyline.prototype.scope = {
-          path: '=',
-          stroke: '=',
-          clickable: '=',
-          draggable: '=',
-          editable: '=',
-          geodesic: '=',
-          icons: '=',
-          visible: '=',
-          "static": '=',
-          fit: '=',
-          events: '='
-        };
+        IPolyline.prototype.scope = IPolyline.scope;
 
         IPolyline.prototype.DEFAULTS = {};
 
@@ -6063,14 +6536,28 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
 
 }).call(this);
 ;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapIWindow', [
     'uiGmapBaseObject', 'uiGmapChildEvents', 'uiGmapCtrlHandle', function(BaseObject, ChildEvents, CtrlHandle) {
       var IWindow;
-      return IWindow = (function(_super) {
-        __extends(IWindow, _super);
+      return IWindow = (function(superClass) {
+        extend(IWindow, superClass);
+
+        IWindow.scope = {
+          coords: '=coords',
+          template: '=template',
+          templateUrl: '=templateurl',
+          templateParameter: '=templateparameter',
+          isIconVisibleOnClick: '=isiconvisibleonclick',
+          closeClick: '&closeclick',
+          options: '=options',
+          control: '=control',
+          show: '=show'
+        };
+
+        IWindow.scopeKeys = _.keys(IWindow.scope);
 
         IWindow.include(ChildEvents);
 
@@ -6083,17 +6570,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           this.priority = -100;
           this.require = '^' + 'uiGmapGoogleMap';
           this.replace = true;
-          this.scope = {
-            coords: '=coords',
-            template: '=template',
-            templateUrl: '=templateurl',
-            templateParameter: '=templateparameter',
-            isIconVisibleOnClick: '=isiconvisibleonclick',
-            closeClick: '&closeclick',
-            options: '=options',
-            control: '=control',
-            show: '=show'
-          };
+          this.scope = _.extend(this.scope || {}, IWindow.scope);
         }
 
         return IWindow;
@@ -6103,405 +6580,373 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*globals angular,_,google */
 
-  angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapMap', [
-    '$timeout', '$q', 'uiGmapLogger', 'uiGmapGmapUtil', 'uiGmapBaseObject', 'uiGmapCtrlHandle', 'uiGmapIsReady', 'uiGmapuuid', 'uiGmapExtendGWin', 'uiGmapExtendMarkerClusterer', 'uiGmapGoogleMapsUtilV3', 'uiGmapGoogleMapApi', 'uiGmapEventsHelper', function($timeout, $q, $log, GmapUtil, BaseObject, CtrlHandle, IsReady, uuid, ExtendGWin, ExtendMarkerClusterer, GoogleMapsUtilV3, GoogleMapApi, EventsHelper) {
-      'use strict';
-      var DEFAULTS, Map, initializeItems;
-      DEFAULTS = void 0;
-      initializeItems = [GoogleMapsUtilV3, ExtendGWin, ExtendMarkerClusterer];
-      return Map = (function(_super) {
-        __extends(Map, _super);
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
-        Map.include(GmapUtil);
+  angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapMap', ['$timeout', '$q', '$log', 'uiGmapGmapUtil', 'uiGmapBaseObject', 'uiGmapCtrlHandle', 'uiGmapIsReady', 'uiGmapuuid', 'uiGmapExtendGWin', 'uiGmapExtendMarkerClusterer', 'uiGmapGoogleMapsUtilV3', 'uiGmapGoogleMapApi', 'uiGmapEventsHelper', 'uiGmapGoogleMapObjectManager', function($timeout, $q, $log, uiGmapGmapUtil, uiGmapBaseObject, uiGmapCtrlHandle, uiGmapIsReady, uiGmapuuid, uiGmapExtendGWin, uiGmapExtendMarkerClusterer, uiGmapGoogleMapsUtilV3, uiGmapGoogleMapApi, uiGmapEventsHelper, uiGmapGoogleMapObjectManager) {
+    var DEFAULTS, Map, initializeItems;
+    DEFAULTS = void 0;
+    initializeItems = [uiGmapGoogleMapsUtilV3, uiGmapExtendGWin, uiGmapExtendMarkerClusterer];
+    return Map = (function(superClass) {
+      extend(Map, superClass);
 
-        function Map() {
-          this.link = __bind(this.link, this);
-          var ctrlFn, self;
-          ctrlFn = function($scope) {
-            var ctrlObj, retCtrl;
-            retCtrl = void 0;
-            $scope.$on('$destroy', function() {
-              return IsReady.reset();
-            });
-            ctrlObj = CtrlHandle.handle($scope);
-            $scope.ctrlType = 'Map';
-            $scope.deferred.promise.then(function() {
-              return initializeItems.forEach(function(i) {
-                return i.init();
-              });
-            });
-            ctrlObj.getMap = function() {
-              return $scope.map;
-            };
-            retCtrl = _.extend(this, ctrlObj);
-            return retCtrl;
-          };
-          this.controller = ['$scope', ctrlFn];
-          self = this;
-        }
+      Map.include(uiGmapGmapUtil);
 
-        Map.prototype.restrict = 'EMA';
-
-        Map.prototype.transclude = true;
-
-        Map.prototype.replace = false;
-
-        Map.prototype.template = '<div class="angular-google-map"><div class="angular-google-map-container"></div><div ng-transclude style="display: none"></div></div>';
-
-        Map.prototype.scope = {
-          center: '=',
-          zoom: '=',
-          dragging: '=',
-          control: '=',
-          options: '=',
-          events: '=',
-          eventOpts: '=',
-          styles: '=',
-          bounds: '=',
-          update: '='
-        };
-
-        Map.prototype.link = function(scope, element, attrs) {
-          var listeners, unbindCenterWatch;
-          listeners = [];
-          scope.$on('$destroy', function() {
-            return EventsHelper.removeEvents(listeners);
+      function Map() {
+        this.link = bind(this.link, this);
+        var ctrlFn;
+        ctrlFn = function($scope) {
+          var ctrlObj, retCtrl;
+          retCtrl = void 0;
+          $scope.$on('$destroy', function() {
+            return uiGmapIsReady.decrement();
           });
-          scope.idleAndZoomChanged = false;
-          if (scope.center == null) {
-            unbindCenterWatch = scope.$watch('center', (function(_this) {
-              return function() {
-                if (!scope.center) {
-                  return;
-                }
-                unbindCenterWatch();
-                return _this.link(scope, element, attrs);
-              };
-            })(this));
-            return;
+          ctrlObj = uiGmapCtrlHandle.handle($scope);
+          $scope.ctrlType = 'Map';
+          $scope.deferred.promise.then(function() {
+            return initializeItems.forEach(function(i) {
+              return i.init();
+            });
+          });
+          ctrlObj.getMap = function() {
+            return $scope.map;
+          };
+          retCtrl = _.extend(this, ctrlObj);
+          return retCtrl;
+        };
+        this.controller = ['$scope', ctrlFn];
+      }
+
+      Map.prototype.restrict = 'EMA';
+
+      Map.prototype.transclude = true;
+
+      Map.prototype.replace = false;
+
+      Map.prototype.template = "<div class=\"angular-google-map\"><div class=\"angular-google-map-container\">\n</div><div ng-transclude style=\"display: none\"></div></div>";
+
+      Map.prototype.scope = {
+        center: '=',
+        zoom: '=',
+        dragging: '=',
+        control: '=',
+        options: '=',
+        events: '=',
+        eventOpts: '=',
+        styles: '=',
+        bounds: '=',
+        update: '='
+      };
+
+      Map.prototype.link = function(scope, element, attrs) {
+        var listeners, unbindCenterWatch;
+        listeners = [];
+        scope.$on('$destroy', function() {
+          uiGmapEventsHelper.removeEvents(listeners);
+          if (attrs.recycleMapInstance === 'true' && scope.map) {
+            uiGmapGoogleMapObjectManager.recycleMapInstance(scope.map);
+            return scope.map = null;
           }
-          return GoogleMapApi.then((function(_this) {
-            return function(maps) {
-              var customListeners, disabledEvents, dragging, el, eventName, getEventHandler, mapOptions, maybeHookToEvent, opts, resolveSpawned, settingCenterFromDirective, settingCenterFromScope, settingZoomFromDirective, settingZoomFromScope, spawned, type, _gMap, _ref;
-              DEFAULTS = {
-                mapTypeId: maps.MapTypeId.ROADMAP
-              };
-              spawned = IsReady.spawn();
-              resolveSpawned = function() {
-                return spawned.deferred.resolve({
-                  instance: spawned.instance,
-                  map: _gMap
-                });
-              };
-              if (!_this.validateCoords(scope.center)) {
-                $log.error('angular-google-maps: could not find a valid center property');
+        });
+        scope.idleAndZoomChanged = false;
+        if (scope.center == null) {
+          unbindCenterWatch = scope.$watch('center', (function(_this) {
+            return function() {
+              if (!scope.center) {
                 return;
               }
-              if (!angular.isDefined(scope.zoom)) {
-                $log.error('angular-google-maps: map zoom property not set');
-                return;
-              }
-              el = angular.element(element);
-              el.addClass('angular-google-map');
-              opts = {
-                options: {}
-              };
-              if (attrs.options) {
-                opts.options = scope.options;
-              }
-              if (attrs.styles) {
-                opts.styles = scope.styles;
-              }
-              if (attrs.type) {
-                type = attrs.type.toUpperCase();
-                if (google.maps.MapTypeId.hasOwnProperty(type)) {
-                  opts.mapTypeId = google.maps.MapTypeId[attrs.type.toUpperCase()];
-                } else {
-                  $log.error("angular-google-maps: invalid map type '" + attrs.type + "'");
-                }
-              }
-              mapOptions = angular.extend({}, DEFAULTS, opts, {
-                center: _this.getCoords(scope.center),
-                zoom: scope.zoom,
-                bounds: scope.bounds
-              });
-              _gMap = new google.maps.Map(el.find('div')[1], mapOptions);
-              _gMap['uiGmap_id'] = uuid.generate();
-              dragging = false;
-              listeners.push(google.maps.event.addListenerOnce(_gMap, 'idle', function() {
-                scope.deferred.resolve(_gMap);
-                return resolveSpawned();
-              }));
-              disabledEvents = attrs.events && (((_ref = scope.events) != null ? _ref.blacklist : void 0) != null) ? scope.events.blacklist : [];
-              if (_.isString(disabledEvents)) {
-                disabledEvents = [disabledEvents];
-              }
-              maybeHookToEvent = function(eventName, fn, prefn) {
-                if (!_.contains(disabledEvents, eventName)) {
-                  if (prefn) {
-                    prefn();
-                  }
-                  return listeners.push(google.maps.event.addListener(_gMap, eventName, function() {
-                    var _ref1;
-                    if (!((_ref1 = scope.update) != null ? _ref1.lazy : void 0)) {
-                      return fn();
-                    }
-                  }));
-                }
-              };
-              if (!_.contains(disabledEvents, 'all')) {
-                maybeHookToEvent('dragstart', function() {
-                  dragging = true;
-                  return scope.$evalAsync(function(s) {
-                    if (s.dragging != null) {
-                      return s.dragging = dragging;
-                    }
-                  });
-                });
-                maybeHookToEvent('dragend', function() {
-                  dragging = false;
-                  return scope.$evalAsync(function(s) {
-                    if (s.dragging != null) {
-                      return s.dragging = dragging;
-                    }
-                  });
-                });
-                maybeHookToEvent('drag', function() {
-                  var c, _ref1, _ref2, _ref3;
-                  c = _gMap.center;
-                  return $timeout(function() {
-                    var s;
-                    s = scope;
-                    if (angular.isDefined(s.center.type)) {
-                      s.center.coordinates[1] = c.lat();
-                      return s.center.coordinates[0] = c.lng();
-                    } else {
-                      s.center.latitude = c.lat();
-                      return s.center.longitude = c.lng();
-                    }
-                  }, (_ref1 = scope.eventOpts) != null ? (_ref2 = _ref1.debounce) != null ? (_ref3 = _ref2.debounce) != null ? _ref3.dragMs : void 0 : void 0 : void 0);
-                });
-                settingZoomFromScope = false;
-                settingZoomFromDirective = false;
-                maybeHookToEvent('zoom_changed', function() {
-                  var _ref1, _ref2;
-                  if (settingZoomFromScope) {
-                    return;
-                  }
-                  if (scope.zoom !== _gMap.zoom) {
-                    settingZoomFromDirective = true;
-                    return $timeout(function() {
-                      scope.zoom = _gMap.zoom;
-                      return settingZoomFromDirective = false;
-                    }, (_ref1 = scope.eventOpts) != null ? (_ref2 = _ref1.debounce) != null ? _ref2.zoomMs : void 0 : void 0);
-                  }
-                });
-                settingCenterFromScope = false;
-                settingCenterFromDirective = false;
-                maybeHookToEvent('center_changed', function() {
-                  var c, _ref1, _ref2;
-                  c = _gMap.center;
-                  if (settingCenterFromScope) {
-                    return;
-                  }
-                  settingCenterFromDirective = true;
-                  return $timeout(function() {
-                    var s;
-                    s = scope;
-                    if (!_gMap.dragging) {
-                      if (angular.isDefined(s.center.type)) {
-                        if (s.center.coordinates[1] !== c.lat()) {
-                          s.center.coordinates[1] = c.lat();
-                        }
-                        if (s.center.coordinates[0] !== c.lng()) {
-                          s.center.coordinates[0] = c.lng();
-                        }
-                      } else {
-                        if (s.center.latitude !== c.lat()) {
-                          s.center.latitude = c.lat();
-                        }
-                        if (s.center.longitude !== c.lng()) {
-                          s.center.longitude = c.lng();
-                        }
-                      }
-                    }
-                    return settingCenterFromDirective = false;
-                  }, (_ref1 = scope.eventOpts) != null ? (_ref2 = _ref1.debounce) != null ? _ref2.centerMs : void 0 : void 0);
-                });
-                maybeHookToEvent('idle', function() {
-                  var b, ne, sw;
-                  b = _gMap.getBounds();
-                  ne = b.getNorthEast();
-                  sw = b.getSouthWest();
-                  return scope.$evalAsync(function(s) {
-                    var c;
-                    c = _gMap.center;
-                    if (angular.isDefined(s.center.type)) {
-                      if (s.center.coordinates[1] !== c.lat()) {
-                        s.center.coordinates[1] = c.lat();
-                      }
-                      if (s.center.coordinates[0] !== c.lng()) {
-                        s.center.coordinates[0] = c.lng();
-                      }
-                    } else {
-                      if (s.center.latitude !== c.lat()) {
-                        s.center.latitude = c.lat();
-                      }
-                      if (s.center.longitude !== c.lng()) {
-                        s.center.longitude = c.lng();
-                      }
-                    }
-                    if (s.bounds !== null && s.bounds !== undefined && s.bounds !== void 0) {
-                      s.bounds.northeast = {
-                        latitude: ne.lat(),
-                        longitude: ne.lng()
-                      };
-                      s.bounds.southwest = {
-                        latitude: sw.lat(),
-                        longitude: sw.lng()
-                      };
-                      s.zoom = _gMap.zoom;
-                      return scope.idleAndZoomChanged = !scope.idleAndZoomChanged;
-                    }
-                  });
-                });
-              }
-              if (angular.isDefined(scope.events) && scope.events !== null && angular.isObject(scope.events)) {
-                getEventHandler = function(eventName) {
-                  return function() {
-                    return scope.events[eventName].apply(scope, [_gMap, eventName, arguments]);
-                  };
-                };
-                customListeners = [];
-                for (eventName in scope.events) {
-                  if (scope.events.hasOwnProperty(eventName) && angular.isFunction(scope.events[eventName])) {
-                    customListeners.push(google.maps.event.addListener(_gMap, eventName, getEventHandler(eventName)));
-                  }
-                }
-                listeners.concat(customListeners);
-              }
-              _gMap.getOptions = function() {
-                return mapOptions;
-              };
-              scope.map = _gMap;
-              if ((attrs.control != null) && (scope.control != null)) {
-                scope.control.refresh = function(maybeCoords) {
-                  var coords;
-                  if (_gMap == null) {
-                    return;
-                  }
-                  google.maps.event.trigger(_gMap, 'resize');
-                  if (((maybeCoords != null ? maybeCoords.latitude : void 0) != null) && ((maybeCoords != null ? maybeCoords.latitude : void 0) != null)) {
-                    coords = _this.getCoords(maybeCoords);
-                    if (_this.isTrue(attrs.pan)) {
-                      return _gMap.panTo(coords);
-                    } else {
-                      return _gMap.setCenter(coords);
-                    }
-                  }
-                };
-                scope.control.getGMap = function() {
-                  return _gMap;
-                };
-                scope.control.getMapOptions = function() {
-                  return mapOptions;
-                };
-                scope.control.getCustomEventListeners = function() {
-                  return customListeners;
-                };
-                scope.control.removeEvents = function(yourListeners) {
-                  return EventsHelper.removeEvents(yourListeners);
-                };
-              }
-              scope.$watch('center', function(newValue, oldValue) {
-                var coords;
-                if (newValue === oldValue || settingCenterFromDirective) {
-                  return;
-                }
-                coords = _this.getCoords(scope.center);
-                if (coords.lat() === _gMap.center.lat() && coords.lng() === _gMap.center.lng()) {
-                  return;
-                }
-                settingCenterFromScope = true;
-                if (!dragging) {
-                  if (!_this.validateCoords(newValue)) {
-                    $log.error("Invalid center for newValue: " + (JSON.stringify(newValue)));
-                  }
-                  if (_this.isTrue(attrs.pan) && scope.zoom === _gMap.zoom) {
-                    _gMap.panTo(coords);
-                  } else {
-                    _gMap.setCenter(coords);
-                  }
-                }
-                return settingCenterFromScope = false;
-              }, true);
-              scope.$watch('zoom', function(newValue, oldValue) {
-                var _ref1, _ref2;
-                if (_.isEqual(newValue, oldValue) || _gMap.getZoom() === scope.zoom) {
-                  return;
-                }
-                settingZoomFromScope = true;
-                return $timeout(function() {
-                  _gMap.setZoom(newValue);
-                  return settingZoomFromScope = false;
-                }, ((_ref1 = scope.eventOpts) != null ? (_ref2 = _ref1.debounce) != null ? _ref2.zoomMs : void 0 : void 0) + 20, false);
-              });
-              scope.$watch('bounds', function(newValue, oldValue) {
-                var bounds, ne, sw;
-                if (newValue === oldValue) {
-                  return;
-                }
-                if ((newValue.northeast.latitude == null) || (newValue.northeast.longitude == null) || (newValue.southwest.latitude == null) || (newValue.southwest.longitude == null)) {
-                  $log.error("Invalid map bounds for new value: " + (JSON.stringify(newValue)));
-                  return;
-                }
-                ne = new google.maps.LatLng(newValue.northeast.latitude, newValue.northeast.longitude);
-                sw = new google.maps.LatLng(newValue.southwest.latitude, newValue.southwest.longitude);
-                bounds = new google.maps.LatLngBounds(sw, ne);
-                return _gMap.fitBounds(bounds);
-              });
-              return ['options', 'styles'].forEach(function(toWatch) {
-                return scope.$watch(toWatch, function(newValue, oldValue) {
-                  var watchItem;
-                  watchItem = this.exp;
-                  if (_.isEqual(newValue, oldValue)) {
-                    return;
-                  }
-                  opts.options = newValue;
-                  if (_gMap != null) {
-                    return _gMap.setOptions(opts);
-                  }
-                });
-              }, true);
+              unbindCenterWatch();
+              return _this.link(scope, element, attrs);
             };
           })(this));
-        };
+          return;
+        }
+        return uiGmapGoogleMapApi.then((function(_this) {
+          return function(maps) {
+            var _gMap, customListeners, disabledEvents, dragging, el, eventName, getEventHandler, mapOptions, maybeHookToEvent, opts, ref, resolveSpawned, settingFromDirective, spawned, type, updateCenter, zoomPromise;
+            DEFAULTS = {
+              mapTypeId: maps.MapTypeId.ROADMAP
+            };
+            spawned = uiGmapIsReady.spawn();
+            resolveSpawned = function() {
+              return spawned.deferred.resolve({
+                instance: spawned.instance,
+                map: _gMap
+              });
+            };
+            if (!_this.validateCoords(scope.center)) {
+              $log.error('angular-google-maps: could not find a valid center property');
+              return;
+            }
+            if (!angular.isDefined(scope.zoom)) {
+              $log.error('angular-google-maps: map zoom property not set');
+              return;
+            }
+            el = angular.element(element);
+            el.addClass('angular-google-map');
+            opts = {
+              options: {}
+            };
+            if (attrs.options) {
+              opts.options = scope.options;
+            }
+            if (attrs.styles) {
+              opts.styles = scope.styles;
+            }
+            if (attrs.type) {
+              type = attrs.type.toUpperCase();
+              if (google.maps.MapTypeId.hasOwnProperty(type)) {
+                opts.mapTypeId = google.maps.MapTypeId[attrs.type.toUpperCase()];
+              } else {
+                $log.error("angular-google-maps: invalid map type '" + attrs.type + "'");
+              }
+            }
+            mapOptions = angular.extend({}, DEFAULTS, opts, {
+              center: _this.getCoords(scope.center),
+              zoom: scope.zoom,
+              bounds: scope.bounds
+            });
+            if (attrs.recycleMapInstance === 'true') {
+              _gMap = uiGmapGoogleMapObjectManager.createMapInstance(el.find('div')[1], mapOptions);
+            } else {
+              _gMap = new google.maps.Map(el.find('div')[1], mapOptions);
+            }
+            _gMap['uiGmap_id'] = uiGmapuuid.generate();
+            dragging = false;
+            listeners.push(google.maps.event.addListenerOnce(_gMap, 'idle', function() {
+              scope.deferred.resolve(_gMap);
+              return resolveSpawned();
+            }));
+            disabledEvents = attrs.events && (((ref = scope.events) != null ? ref.blacklist : void 0) != null) ? scope.events.blacklist : [];
+            if (_.isString(disabledEvents)) {
+              disabledEvents = [disabledEvents];
+            }
+            maybeHookToEvent = function(eventName, fn, prefn) {
+              if (!_.includes(disabledEvents, eventName)) {
+                if (prefn) {
+                  prefn();
+                }
+                return listeners.push(google.maps.event.addListener(_gMap, eventName, function() {
+                  var ref1;
+                  if (!((ref1 = scope.update) != null ? ref1.lazy : void 0)) {
+                    return fn();
+                  }
+                }));
+              }
+            };
+            if (!_.includes(disabledEvents, 'all')) {
+              maybeHookToEvent('dragstart', function() {
+                dragging = true;
+                return scope.$evalAsync(function(s) {
+                  if (s.dragging != null) {
+                    return s.dragging = dragging;
+                  }
+                });
+              });
+              maybeHookToEvent('dragend', function() {
+                dragging = false;
+                return scope.$evalAsync(function(s) {
+                  if (s.dragging != null) {
+                    return s.dragging = dragging;
+                  }
+                });
+              });
+              updateCenter = function(c, s) {
+                if (c == null) {
+                  c = _gMap.center;
+                }
+                if (s == null) {
+                  s = scope;
+                }
+                if (_.includes(disabledEvents, 'center')) {
+                  return;
+                }
+                if (angular.isDefined(s.center.type)) {
+                  if (s.center.coordinates[1] !== c.lat()) {
+                    s.center.coordinates[1] = c.lat();
+                  }
+                  if (s.center.coordinates[0] !== c.lng()) {
+                    return s.center.coordinates[0] = c.lng();
+                  }
+                } else {
+                  if (s.center.latitude !== c.lat()) {
+                    s.center.latitude = c.lat();
+                  }
+                  if (s.center.longitude !== c.lng()) {
+                    return s.center.longitude = c.lng();
+                  }
+                }
+              };
+              settingFromDirective = false;
+              maybeHookToEvent('idle', function() {
+                var b, ne, sw;
+                b = _gMap.getBounds();
+                ne = b.getNorthEast();
+                sw = b.getSouthWest();
+                settingFromDirective = true;
+                return scope.$evalAsync(function(s) {
+                  updateCenter();
+                  if (!_.isUndefined(s.bounds) && !_.includes(disabledEvents, 'bounds')) {
+                    s.bounds.northeast = {
+                      latitude: ne.lat(),
+                      longitude: ne.lng()
+                    };
+                    s.bounds.southwest = {
+                      latitude: sw.lat(),
+                      longitude: sw.lng()
+                    };
+                  }
+                  if (!_.includes(disabledEvents, 'zoom')) {
+                    s.zoom = _gMap.zoom;
+                    scope.idleAndZoomChanged = !scope.idleAndZoomChanged;
+                  }
+                  return settingFromDirective = false;
+                });
+              });
+            }
+            if (angular.isDefined(scope.events) && scope.events !== null && angular.isObject(scope.events)) {
+              getEventHandler = function(eventName) {
+                return function() {
+                  return scope.events[eventName].apply(scope, [_gMap, eventName, arguments]);
+                };
+              };
+              customListeners = [];
+              for (eventName in scope.events) {
+                if (scope.events.hasOwnProperty(eventName) && angular.isFunction(scope.events[eventName])) {
+                  customListeners.push(google.maps.event.addListener(_gMap, eventName, getEventHandler(eventName)));
+                }
+              }
+              listeners.concat(customListeners);
+            }
+            _gMap.getOptions = function() {
+              return mapOptions;
+            };
+            scope.map = _gMap;
+            if ((attrs.control != null) && (scope.control != null)) {
+              scope.control.refresh = function(maybeCoords) {
+                var coords, ref1, ref2;
+                if (_gMap == null) {
+                  return;
+                }
+                if (((typeof google !== "undefined" && google !== null ? (ref1 = google.maps) != null ? (ref2 = ref1.event) != null ? ref2.trigger : void 0 : void 0 : void 0) != null) && (_gMap != null)) {
+                  google.maps.event.trigger(_gMap, 'resize');
+                }
+                if (((maybeCoords != null ? maybeCoords.latitude : void 0) != null) && ((maybeCoords != null ? maybeCoords.longitude : void 0) != null)) {
+                  coords = _this.getCoords(maybeCoords);
+                  if (_this.isTrue(attrs.pan)) {
+                    return _gMap.panTo(coords);
+                  } else {
+                    return _gMap.setCenter(coords);
+                  }
+                }
+              };
+              scope.control.getGMap = function() {
+                return _gMap;
+              };
+              scope.control.getMapOptions = function() {
+                return mapOptions;
+              };
+              scope.control.getCustomEventListeners = function() {
+                return customListeners;
+              };
+              scope.control.removeEvents = function(yourListeners) {
+                return uiGmapEventsHelper.removeEvents(yourListeners);
+              };
+            }
+            scope.$watch('center', function(newValue, oldValue) {
+              var coords;
+              if (newValue === oldValue || settingFromDirective) {
+                return;
+              }
+              coords = _this.getCoords(scope.center);
+              if (coords.lat() === _gMap.center.lat() && coords.lng() === _gMap.center.lng()) {
+                return;
+              }
+              if (!dragging) {
+                if (!_this.validateCoords(newValue)) {
+                  $log.error("Invalid center for newValue: " + (JSON.stringify(newValue)));
+                }
+                if (_this.isTrue(attrs.pan) && scope.zoom === _gMap.zoom) {
+                  return _gMap.panTo(coords);
+                } else {
+                  return _gMap.setCenter(coords);
+                }
+              }
+            }, true);
+            zoomPromise = null;
+            scope.$watch('zoom', function(newValue, oldValue) {
+              var ref1, ref2;
+              if (newValue == null) {
+                return;
+              }
+              if (_.isEqual(newValue, oldValue) || (_gMap != null ? _gMap.getZoom() : void 0) === (scope != null ? scope.zoom : void 0) || settingFromDirective) {
+                return;
+              }
+              if (zoomPromise != null) {
+                $timeout.cancel(zoomPromise);
+              }
+              return zoomPromise = $timeout(function() {
+                return _gMap.setZoom(newValue);
+              }, ((ref1 = scope.eventOpts) != null ? (ref2 = ref1.debounce) != null ? ref2.zoomMs : void 0 : void 0) + 20, false);
+            });
+            scope.$watch('bounds', function(newValue, oldValue) {
+              var bounds, ne, ref1, ref2, ref3, ref4, sw;
+              if (newValue === oldValue) {
+                return;
+              }
+              if (((newValue != null ? (ref1 = newValue.northeast) != null ? ref1.latitude : void 0 : void 0) == null) || ((newValue != null ? (ref2 = newValue.northeast) != null ? ref2.longitude : void 0 : void 0) == null) || ((newValue != null ? (ref3 = newValue.southwest) != null ? ref3.latitude : void 0 : void 0) == null) || ((newValue != null ? (ref4 = newValue.southwest) != null ? ref4.longitude : void 0 : void 0) == null)) {
+                $log.error("Invalid map bounds for new value: " + (JSON.stringify(newValue)));
+                return;
+              }
+              ne = new google.maps.LatLng(newValue.northeast.latitude, newValue.northeast.longitude);
+              sw = new google.maps.LatLng(newValue.southwest.latitude, newValue.southwest.longitude);
+              bounds = new google.maps.LatLngBounds(sw, ne);
+              return _gMap.fitBounds(bounds);
+            });
+            return ['options', 'styles'].forEach(function(toWatch) {
+              return scope.$watch(toWatch, function(newValue, oldValue) {
+                if (_.isEqual(newValue, oldValue)) {
+                  return;
+                }
+                if (toWatch === 'options') {
+                  opts.options = newValue;
+                } else {
+                  opts.options[toWatch] = newValue;
+                }
+                if (_gMap != null) {
+                  return _gMap.setOptions(opts);
+                }
+              }, true);
+            });
+          };
+        })(this));
+      };
 
-        return Map;
+      return Map;
 
-      })(BaseObject);
-    }
-  ]);
+    })(uiGmapBaseObject);
+  }]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global _:true,angular:true */
+
+(function() {
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module("uiGmapgoogle-maps.directives.api").factory("uiGmapMarker", [
     "uiGmapIMarker", "uiGmapMarkerChildModel", "uiGmapMarkerManager", "uiGmapLogger", function(IMarker, MarkerChildModel, MarkerManager, $log) {
       var Marker;
-      return Marker = (function(_super) {
-        __extends(Marker, _super);
+      return Marker = (function(superClass) {
+        extend(Marker, superClass);
 
         function Marker() {
-          this.link = __bind(this.link, this);
           Marker.__super__.constructor.call(this);
           this.template = '<span class="angular-google-map-marker" ng-transclude></span>';
           $log.info(this);
@@ -6517,29 +6962,34 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         Marker.prototype.link = function(scope, element, attrs, ctrl) {
           var mapPromise;
           mapPromise = IMarker.mapPromise(scope, ctrl);
-          mapPromise.then((function(_this) {
-            return function(map) {
-              var doClick, doDrawSelf, gMarkerManager, keys, m, trackModel;
-              gMarkerManager = new MarkerManager(map);
-              keys = _.object(IMarker.keys, IMarker.keys);
-              m = new MarkerChildModel(scope, scope, keys, map, {}, doClick = true, gMarkerManager, doDrawSelf = false, trackModel = false);
-              m.deferred.promise.then(function(gMarker) {
-                return scope.deferred.resolve(gMarker);
-              });
-              if (scope.control != null) {
-                return scope.control.getGMarkers = gMarkerManager.getGMarkers;
-              }
-            };
-          })(this));
-          return scope.$on('$destroy', (function(_this) {
-            return function() {
-              var gMarkerManager;
-              if (typeof gMarkerManager !== "undefined" && gMarkerManager !== null) {
-                gMarkerManager.clear();
-              }
-              return gMarkerManager = null;
-            };
-          })(this));
+          mapPromise.then(function(gMap) {
+            var gManager, keys, m;
+            gManager = new MarkerManager(gMap);
+            keys = _.object(IMarker.keys, IMarker.keys);
+            m = new MarkerChildModel({
+              scope: scope,
+              model: scope,
+              keys: keys,
+              gMap: gMap,
+              doClick: true,
+              gManager: gManager,
+              doDrawSelf: false,
+              trackModel: false
+            });
+            m.deferred.promise.then(function(gMarker) {
+              return scope.deferred.resolve(gMarker);
+            });
+            if (scope.control != null) {
+              return scope.control.getGMarkers = gManager.getGMarkers;
+            }
+          });
+          return scope.$on('$destroy', function() {
+            var gManager;
+            if (typeof gManager !== "undefined" && gManager !== null) {
+              gManager.clear();
+            }
+            return gManager = null;
+          });
         };
 
         return Marker;
@@ -6549,25 +6999,30 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
-  var __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global _:true,angular:true */
+
+(function() {
+  var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module("uiGmapgoogle-maps.directives.api").factory("uiGmapMarkers", [
     "uiGmapIMarker", "uiGmapPlural", "uiGmapMarkersParentModel", "uiGmap_sync", "uiGmapLogger", function(IMarker, Plural, MarkersParentModel, _sync, $log) {
       var Markers;
-      return Markers = (function(_super) {
-        __extends(Markers, _super);
+      return Markers = (function(superClass) {
+        extend(Markers, superClass);
 
         function Markers() {
           Markers.__super__.constructor.call(this);
           this.template = '<span class="angular-google-map-markers" ng-transclude></span>';
           Plural.extend(this, {
-            doRebuildAll: '=dorebuildall',
-            doCluster: '=docluster',
+            doCluster: '=?docluster',
             clusterOptions: '=clusteroptions',
             clusterEvents: '=clusterevents',
-            modelsByRef: '=modelsbyref'
+            modelsByRef: '=modelsbyref',
+            type: '=?type',
+            typeOptions: '=?typeoptions',
+            typeEvents: '=?typeevents'
           });
           $log.info(this);
         }
@@ -6583,24 +7038,25 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           var parentModel, ready;
           parentModel = void 0;
           ready = function() {
-            if (scope.control != null) {
-              scope.control.getGMarkers = function() {
-                var _ref;
-                return (_ref = parentModel.gMarkerManager) != null ? _ref.getGMarkers() : void 0;
-              };
-              scope.control.getChildMarkers = function() {
-                return parentModel.markerModels;
-              };
-            }
             return scope.deferred.resolve();
           };
           return IMarker.mapPromise(scope, ctrl).then(function(map) {
             var mapScope;
             mapScope = ctrl.getScope();
             mapScope.$watch('idleAndZoomChanged', function() {
-              return _.defer(parentModel.gMarkerManager.draw);
+              return _.defer(parentModel.gManager.draw);
             });
             parentModel = new MarkersParentModel(scope, element, attrs, map);
+            Plural.link(scope, parentModel);
+            if (scope.control != null) {
+              scope.control.getGMarkers = function() {
+                var ref;
+                return (ref = parentModel.gManager) != null ? ref.getGMarkers() : void 0;
+              };
+              scope.control.getChildMarkers = function() {
+                return parentModel.plurals;
+              };
+            }
             return _.last(parentModel.existingPieces._content).then(function() {
               return ready();
             });
@@ -6614,36 +7070,79 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
-  angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapPlural', [
+;
+/*global angular */
+
+(function() {
+  angular.module('uiGmapgoogle-maps.directives.api').service('uiGmapPlural', [
     function() {
+      var _initControl;
+      _initControl = function(scope, parent) {
+        if (scope.control == null) {
+          return;
+        }
+        scope.control.updateModels = function(models) {
+          scope.models = models;
+          return parent.createChildScopes(false);
+        };
+        scope.control.newModels = function(models) {
+          scope.models = models;
+          return parent.rebuildAll(scope, true, true);
+        };
+        scope.control.clean = function() {
+          return parent.rebuildAll(scope, false, true);
+        };
+        scope.control.getPlurals = function() {
+          return parent.plurals;
+        };
+        scope.control.getManager = function() {
+          return parent.gManager;
+        };
+        scope.control.hasManager = function() {
+          return (parent.gManager != null) === true;
+        };
+        return scope.control.managerDraw = function() {
+          var ref;
+          if (scope.control.hasManager()) {
+            return (ref = scope.control.getManager()) != null ? ref.draw() : void 0;
+          }
+        };
+      };
       return {
         extend: function(obj, obj2) {
           return _.extend(obj.scope || {}, obj2 || {}, {
             idKey: '=idkey',
             doRebuildAll: '=dorebuildall',
             models: '=models',
-            chunk: '=chunk'
+            chunk: '=chunk',
+            cleanchunk: '=cleanchunk',
+            control: '=control'
           });
+        },
+        link: function(scope, parent) {
+          return _initControl(scope, parent);
         }
       };
     }
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global angular */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapPolygon', [
-    'uiGmapIPolygon', '$timeout', 'uiGmaparray-sync', 'uiGmapPolygonChildModel', function(IPolygon, $timeout, arraySync, PolygonChild) {
+    'uiGmapIPolygon', '$timeout', 'uiGmapPolygonChildModel', function(IPolygon, $timeout, PolygonChild) {
       var Polygon;
-      return Polygon = (function(_super) {
-        __extends(Polygon, _super);
+      return Polygon = (function(superClass) {
+        extend(Polygon, superClass);
 
         function Polygon() {
-          this.link = __bind(this.link, this);
+          this.link = bind(this.link, this);
           return Polygon.__super__.constructor.apply(this, arguments);
         }
 
@@ -6657,8 +7156,13 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             scope.control.promise = promise;
           }
           return promise.then((function(_this) {
-            return function(map) {
-              return children.push(new PolygonChild(scope, attrs, map, _this.DEFAULTS));
+            return function(gMap) {
+              return children.push(new PolygonChild({
+                scope: scope,
+                attrs: attrs,
+                gMap: gMap,
+                defaults: _this.DEFAULTS
+              }));
             };
           })(this));
         };
@@ -6670,19 +7174,22 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global angular:true */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapPolygons', [
-    'uiGmapIPolygon', '$timeout', 'uiGmaparray-sync', 'uiGmapPolygonsParentModel', 'uiGmapPlural', function(Interface, $timeout, arraySync, ParentModel, Plural) {
+    'uiGmapIPolygon', '$timeout', 'uiGmapPolygonsParentModel', 'uiGmapPlural', function(Interface, $timeout, ParentModel, Plural) {
       var Polygons;
-      return Polygons = (function(_super) {
-        __extends(Polygons, _super);
+      return Polygons = (function(superClass) {
+        extend(Polygons, superClass);
 
         function Polygons() {
-          this.link = __bind(this.link, this);
+          this.link = bind(this.link, this);
           Polygons.__super__.constructor.call(this);
           Plural.extend(this);
           this.$log.info(this);
@@ -6691,28 +7198,13 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         Polygons.prototype.link = function(scope, element, attrs, mapCtrl) {
           return mapCtrl.getScope().deferred.promise.then((function(_this) {
             return function(map) {
-              var parent;
               if (angular.isUndefined(scope.path) || scope.path === null) {
                 _this.$log.warn('polygons: no valid path attribute found');
               }
               if (!scope.models) {
                 _this.$log.warn('polygons: no models found to create from');
               }
-              parent = null;
-              if (scope.control != null) {
-                scope.control.updateModels = function(models) {
-                  scope.models = models;
-                  return parent.createChildScopes(false);
-                };
-                scope.control.newModels = function(models) {
-                  scope.models = models;
-                  return parent.rebuildAll(scope, true, true);
-                };
-                scope.control.clean = function() {
-                  return parent.rebuildAll(scope, false, true);
-                };
-              }
-              return parent = new ParentModel(scope, element, attrs, map, _this.DEFAULTS);
+              return Plural.link(scope, new ParentModel(scope, element, attrs, map, _this.DEFAULTS));
             };
           })(this));
         };
@@ -6724,29 +7216,37 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global angular */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapPolyline', [
-    'uiGmapIPolyline', '$timeout', 'uiGmaparray-sync', 'uiGmapPolylineChildModel', function(IPolyline, $timeout, arraySync, PolylineChildModel) {
+    'uiGmapIPolyline', '$timeout', 'uiGmapPolylineChildModel', function(IPolyline, $timeout, PolylineChildModel) {
       var Polyline;
-      return Polyline = (function(_super) {
-        __extends(Polyline, _super);
+      return Polyline = (function(superClass) {
+        extend(Polyline, superClass);
 
         function Polyline() {
-          this.link = __bind(this.link, this);
+          this.link = bind(this.link, this);
           return Polyline.__super__.constructor.apply(this, arguments);
         }
 
         Polyline.prototype.link = function(scope, element, attrs, mapCtrl) {
           return IPolyline.mapPromise(scope, mapCtrl).then((function(_this) {
-            return function(map) {
+            return function(gMap) {
               if (angular.isUndefined(scope.path) || scope.path === null || !_this.validatePath(scope.path)) {
                 _this.$log.warn('polyline: no valid path attribute found');
               }
-              return new PolylineChildModel(scope, attrs, map, _this.DEFAULTS);
+              return new PolylineChildModel({
+                scope: scope,
+                attrs: attrs,
+                gMap: gMap,
+                defaults: _this.DEFAULTS
+              });
             };
           })(this));
         };
@@ -6758,35 +7258,37 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global angular */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapPolylines', [
-    'uiGmapIPolyline', '$timeout', 'uiGmaparray-sync', 'uiGmapPolylinesParentModel', function(IPolyline, $timeout, arraySync, PolylinesParentModel) {
+    'uiGmapIPolyline', '$timeout', 'uiGmapPolylinesParentModel', 'uiGmapPlural', function(IPolyline, $timeout, PolylinesParentModel, Plural) {
       var Polylines;
-      return Polylines = (function(_super) {
-        __extends(Polylines, _super);
+      return Polylines = (function(superClass) {
+        extend(Polylines, superClass);
 
         function Polylines() {
-          this.link = __bind(this.link, this);
+          this.link = bind(this.link, this);
           Polylines.__super__.constructor.call(this);
-          this.scope.idKey = '=idkey';
-          this.scope.models = '=models';
+          Plural.extend(this);
           this.$log.info(this);
         }
 
         Polylines.prototype.link = function(scope, element, attrs, mapCtrl) {
           return mapCtrl.getScope().deferred.promise.then((function(_this) {
-            return function(map) {
+            return function(gMap) {
               if (angular.isUndefined(scope.path) || scope.path === null) {
                 _this.$log.warn('polylines: no valid path attribute found');
               }
               if (!scope.models) {
                 _this.$log.warn('polylines: no models found to create from');
               }
-              return new PolylinesParentModel(scope, element, attrs, map, _this.DEFAULTS);
+              return Plural.link(scope, new PolylinesParentModel(scope, element, attrs, gMap, _this.DEFAULTS));
             };
           })(this));
         };
@@ -6803,32 +7305,33 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
     'uiGmapLogger', 'uiGmapGmapUtil', 'uiGmapIRectangle', 'uiGmapRectangleParentModel', function($log, GmapUtil, IRectangle, RectangleParentModel) {
       return _.extend(IRectangle, {
         link: function(scope, element, attrs, mapCtrl) {
-          return mapCtrl.getScope().deferred.promise.then((function(_this) {
-            return function(map) {
-              return new RectangleParentModel(scope, element, attrs, map);
-            };
-          })(this));
+          return mapCtrl.getScope().deferred.promise.then(function(gMap) {
+            return new RectangleParentModel(scope, element, attrs, gMap);
+          });
         }
       });
     }
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global angular:true */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapWindow', [
     'uiGmapIWindow', 'uiGmapGmapUtil', 'uiGmapWindowChildModel', 'uiGmapLodash', 'uiGmapLogger', function(IWindow, GmapUtil, WindowChildModel, uiGmapLodash, $log) {
       var Window;
-      return Window = (function(_super) {
-        __extends(Window, _super);
+      return Window = (function(superClass) {
+        extend(Window, superClass);
 
         Window.include(GmapUtil);
 
         function Window() {
-          this.link = __bind(this.link, this);
+          this.link = bind(this.link, this);
           Window.__super__.constructor.call(this);
           this.require = ['^' + 'uiGmapGoogleMap', '^?' + 'uiGmapMarker'];
           this.template = '<span class="angular-google-maps-window" ng-transclude></span>';
@@ -6842,24 +7345,24 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           markerScope = markerCtrl != null ? markerCtrl.getScope() : void 0;
           this.mapPromise = IWindow.mapPromise(scope, ctrls[0]);
           return this.mapPromise.then((function(_this) {
-            return function(mapCtrl) {
+            return function(gMap) {
               var isIconVisibleOnClick;
               isIconVisibleOnClick = true;
               if (angular.isDefined(attrs.isiconvisibleonclick)) {
                 isIconVisibleOnClick = scope.isIconVisibleOnClick;
               }
               if (!markerCtrl) {
-                _this.init(scope, element, isIconVisibleOnClick, mapCtrl);
+                _this.init(scope, element, isIconVisibleOnClick, gMap);
                 return;
               }
               return markerScope.deferred.promise.then(function(gMarker) {
-                return _this.init(scope, element, isIconVisibleOnClick, mapCtrl, markerScope);
+                return _this.init(scope, element, isIconVisibleOnClick, gMap, markerScope);
               });
             };
           })(this));
         };
 
-        Window.prototype.init = function(scope, element, isIconVisibleOnClick, mapCtrl, markerScope) {
+        Window.prototype.init = function(scope, element, isIconVisibleOnClick, gMap, markerScope) {
           var childWindow, defaults, gMarker, hasScopeCoords, opts;
           defaults = scope.options != null ? scope.options : {};
           hasScopeCoords = (scope != null) && this.validateCoords(scope.coords);
@@ -6867,8 +7370,15 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             gMarker = markerScope.getGMarker();
           }
           opts = hasScopeCoords ? this.createWindowOptions(gMarker, scope, element.html(), defaults) : defaults;
-          if (mapCtrl != null) {
-            childWindow = new WindowChildModel({}, scope, opts, isIconVisibleOnClick, mapCtrl, markerScope, element);
+          if (gMap != null) {
+            childWindow = new WindowChildModel({
+              scope: scope,
+              opts: opts,
+              isIconVisibleOnClick: isIconVisibleOnClick,
+              gMap: gMap,
+              markerScope: markerScope,
+              element: element
+            });
             this.childWindows.push(childWindow);
             scope.$on('$destroy', (function(_this) {
               return function() {
@@ -6883,7 +7393,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
             scope.control.getGWindows = (function(_this) {
               return function() {
                 return _this.childWindows.map(function(child) {
-                  return child.gWin;
+                  return child.gObject;
                 });
               };
             })(this);
@@ -6892,6 +7402,7 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
                 return _this.childWindows;
               };
             })(this);
+            scope.control.getPlurals = scope.control.getChildWindows;
             scope.control.showWindow = (function(_this) {
               return function() {
                 return _this.childWindows.map(function(child) {
@@ -6919,10 +7430,13 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
   ]);
 
 }).call(this);
-;(function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+;
+/*global angular */
+
+(function() {
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
 
   angular.module('uiGmapgoogle-maps.directives.api').factory('uiGmapWindows', [
     'uiGmapIWindow', 'uiGmapPlural', 'uiGmapWindowsParentModel', 'uiGmapPromise', 'uiGmapLogger', function(IWindow, Plural, WindowsParentModel, uiGmapPromise, $log) {
@@ -6931,12 +7445,11 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
       Windows directive where many windows map to the models property
        */
       var Windows;
-      return Windows = (function(_super) {
-        __extends(Windows, _super);
+      return Windows = (function(superClass) {
+        extend(Windows, superClass);
 
         function Windows() {
-          this.init = __bind(this.init, this);
-          this.link = __bind(this.link, this);
+          this.link = bind(this.link, this);
           Windows.__super__.constructor.call(this);
           this.require = ['^' + 'uiGmapGoogleMap', '^?' + 'uiGmapMarkers'];
           this.template = '<span class="angular-google-maps-windows" ng-transclude></span>';
@@ -6951,11 +7464,11 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
           markerScope = markerCtrl != null ? markerCtrl.getScope() : void 0;
           return mapScope.deferred.promise.then((function(_this) {
             return function(map) {
-              var promise, _ref;
-              promise = (markerScope != null ? (_ref = markerScope.deferred) != null ? _ref.promise : void 0 : void 0) || uiGmapPromise.resolve();
+              var promise, ref;
+              promise = (markerScope != null ? (ref = markerScope.deferred) != null ? ref.promise : void 0 : void 0) || uiGmapPromise.resolve();
               return promise.then(function() {
-                var pieces, _ref1;
-                pieces = (_ref1 = _this.parentModel) != null ? _ref1.existingPieces : void 0;
+                var pieces, ref1;
+                pieces = (ref1 = _this.parentModel) != null ? ref1.existingPieces : void 0;
                 if (pieces) {
                   return pieces.then(function() {
                     return _this.init(scope, element, attrs, ctrls, map, markerScope);
@@ -6971,19 +7484,16 @@ Original idea from: http://stackoverflow.com/questions/22758950/google-map-drawi
         Windows.prototype.init = function(scope, element, attrs, ctrls, map, additionalScope) {
           var parentModel;
           parentModel = new WindowsParentModel(scope, element, attrs, ctrls, map, additionalScope);
+          Plural.link(scope, parentModel);
           if (scope.control != null) {
-            scope.control.getGWindows = (function(_this) {
-              return function() {
-                return parentModel.windows.map(function(child) {
-                  return child.gWin;
-                });
-              };
-            })(this);
-            return scope.control.getChildWindows = (function(_this) {
-              return function() {
-                return parentModel.windows;
-              };
-            })(this);
+            scope.control.getGWindows = function() {
+              return parentModel.plurals.map(function(child) {
+                return child.gObject;
+              });
+            };
+            return scope.control.getChildWindows = function() {
+              return parentModel.plurals;
+            };
           }
         };
 
@@ -7002,12 +7512,13 @@ Nicholas McCready - https://twitter.com/nmccready
 Nick Baugh - https://github.com/niftylettuce
  */
 
+
+/*globals angular */
+
 (function() {
-  angular.module("uiGmapgoogle-maps").directive("uiGmapGoogleMap", [
-    "uiGmapMap", function(Map) {
-      return new Map();
-    }
-  ]);
+  angular.module("uiGmapgoogle-maps").directive("uiGmapGoogleMap", ['uiGmapMap', function(uiGmapMap) {
+    return new uiGmapMap();
+  }]);
 
 }).call(this);
 ;
@@ -7211,14 +7722,14 @@ This directive creates a new scope.
  */
 
 (function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   angular.module('uiGmapgoogle-maps').directive('uiGmapLayer', [
     '$timeout', 'uiGmapLogger', 'uiGmapLayerParentModel', function($timeout, Logger, LayerParentModel) {
       var Layer;
       Layer = (function() {
         function Layer() {
-          this.link = __bind(this.link, this);
+          this.link = bind(this.link, this);
           this.$log = Logger;
           this.restrict = 'EMA';
           this.require = '^' + 'uiGmapGoogleMap';
@@ -7330,14 +7841,14 @@ This directive creates a new scope.
  */
 
 (function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   angular.module("uiGmapgoogle-maps").directive("uiGmapMapType", [
     "$timeout", "uiGmapLogger", "uiGmapMapTypeParentModel", function($timeout, Logger, MapTypeParentModel) {
       var MapType;
       MapType = (function() {
         function MapType() {
-          this.link = __bind(this.link, this);
+          this.link = bind(this.link, this);
           this.$log = Logger;
           this.restrict = "EMA";
           this.require = '^' + 'uiGmapGoogleMap';
@@ -7405,14 +7916,16 @@ This directive creates a new scope.
  */
 
 (function() {
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+  var bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   angular.module('uiGmapgoogle-maps').directive('uiGmapSearchBox', [
     'uiGmapGoogleMapApi', 'uiGmapLogger', 'uiGmapSearchBoxParentModel', '$http', '$templateCache', '$compile', function(GoogleMapApi, Logger, SearchBoxParentModel, $http, $templateCache, $compile) {
       var SearchBox;
       SearchBox = (function() {
+        SearchBox.prototype.require = 'ngModel';
+
         function SearchBox() {
-          this.link = __bind(this.link, this);
+          this.link = bind(this.link, this);
           this.$log = Logger;
           this.restrict = 'EMA';
           this.require = '^' + 'uiGmapGoogleMap';
@@ -7425,13 +7938,18 @@ This directive creates a new scope.
             events: '=events',
             position: '=?position',
             options: '=?options',
-            parentdiv: '=?parentdiv'
+            parentdiv: '=?parentdiv',
+            ngModel: "=?"
           };
         }
 
         SearchBox.prototype.link = function(scope, element, attrs, mapCtrl) {
           return GoogleMapApi.then((function(_this) {
             return function(maps) {
+              if (scope.template == null) {
+                $templateCache.put('uigmap-searchbox-default.tpl.html', '<input type="text">');
+                scope.template = 'uigmap-searchbox-default.tpl.html';
+              }
               return $http.get(scope.template, {
                 cache: $templateCache
               }).success(function(template) {
@@ -7461,9 +7979,200 @@ This directive creates a new scope.
   ]);
 
 }).call(this);
+;(function() {
+  angular.module('uiGmapgoogle-maps').directive('uiGmapShow', [
+    '$animate', 'uiGmapLogger', function($animate, $log) {
+      return {
+        scope: {
+          'uiGmapShow': '=',
+          'uiGmapAfterShow': '&',
+          'uiGmapAfterHide': '&'
+        },
+        link: function(scope, element) {
+          var angular_post_1_3_handle, angular_pre_1_3_handle, handle;
+          angular_post_1_3_handle = function(animateAction, cb) {
+            return $animate[animateAction](element, 'ng-hide').then(function() {
+              return cb();
+            });
+          };
+          angular_pre_1_3_handle = function(animateAction, cb) {
+            return $animate[animateAction](element, 'ng-hide', cb);
+          };
+          handle = function(animateAction, cb) {
+            if (angular.version.major > 1) {
+              return $log.error("uiGmapShow is not supported for Angular Major greater than 1.\nYour Major is " + angular.version.major + "\"");
+            }
+            if (angular.version.major === 1 && angular.version.minor < 3) {
+              return angular_pre_1_3_handle(animateAction, cb);
+            }
+            return angular_post_1_3_handle(animateAction, cb);
+          };
+          return scope.$watch('uiGmapShow', function(show) {
+            if (show) {
+              handle('removeClass', scope.uiGmapAfterShow);
+            }
+            if (!show) {
+              return handle('addClass', scope.uiGmapAfterHide);
+            }
+          });
+        }
+      };
+    }
+  ]);
+
+}).call(this);
+;
+/*
+@authors:
+- Nicholas McCready - https://twitter.com/nmccready
+ */
+
+
+/*
+StreetViewPanorama Directive to care of basic initialization of StreetViewPanorama
+ */
+
+(function() {
+  angular.module('uiGmapgoogle-maps').directive('uiGmapStreetViewPanorama', [
+    'uiGmapGoogleMapApi', 'uiGmapLogger', 'uiGmapGmapUtil', 'uiGmapEventsHelper', function(GoogleMapApi, $log, GmapUtil, EventsHelper) {
+      var name;
+      name = 'uiGmapStreetViewPanorama';
+      return {
+        restrict: 'EMA',
+        template: '<div class="angular-google-map-street-view-panorama"></div>',
+        replace: true,
+        scope: {
+          focalcoord: '=',
+          radius: '=?',
+          events: '=?',
+          options: '=?',
+          control: '=?',
+          povoptions: '=?',
+          imagestatus: '='
+        },
+        link: function(scope, element, attrs) {
+          return GoogleMapApi.then((function(_this) {
+            return function(maps) {
+              var clean, create, didCreateOptionsFromDirective, firstTime, handleSettings, listeners, opts, pano, povOpts, sv;
+              pano = void 0;
+              sv = void 0;
+              didCreateOptionsFromDirective = false;
+              listeners = void 0;
+              opts = null;
+              povOpts = null;
+              clean = function() {
+                EventsHelper.removeEvents(listeners);
+                if (pano != null) {
+                  pano.unbind('position');
+                  pano.setVisible(false);
+                }
+                if (sv != null) {
+                  if ((sv != null ? sv.setVisible : void 0) != null) {
+                    sv.setVisible(false);
+                  }
+                  return sv = void 0;
+                }
+              };
+              handleSettings = function(perspectivePoint, focalPoint) {
+                var heading;
+                heading = google.maps.geometry.spherical.computeHeading(perspectivePoint, focalPoint);
+                didCreateOptionsFromDirective = true;
+                scope.radius = scope.radius || 50;
+                povOpts = angular.extend({
+                  heading: heading,
+                  zoom: 1,
+                  pitch: 0
+                }, scope.povoptions || {});
+                opts = opts = angular.extend({
+                  navigationControl: false,
+                  addressControl: false,
+                  linksControl: false,
+                  position: perspectivePoint,
+                  pov: povOpts,
+                  visible: true
+                }, scope.options || {});
+                return didCreateOptionsFromDirective = false;
+              };
+              create = function() {
+                var focalPoint;
+                if (!scope.focalcoord) {
+                  $log.error(name + ": focalCoord needs to be defined");
+                  return;
+                }
+                if (!scope.radius) {
+                  $log.error(name + ": needs a radius to set the camera view from its focal target.");
+                  return;
+                }
+                clean();
+                if (sv == null) {
+                  sv = new google.maps.StreetViewService();
+                }
+                if (scope.events) {
+                  listeners = EventsHelper.setEvents(sv, scope, scope);
+                }
+                focalPoint = GmapUtil.getCoords(scope.focalcoord);
+                return sv.getPanoramaByLocation(focalPoint, scope.radius, function(streetViewPanoramaData, status) {
+                  var ele, perspectivePoint, ref;
+                  if (scope.imagestatus != null) {
+                    scope.imagestatus = status;
+                  }
+                  if (((ref = scope.events) != null ? ref.image_status_changed : void 0) != null) {
+                    scope.events.image_status_changed(sv, 'image_status_changed', scope, status);
+                  }
+                  if (status === "OK") {
+                    perspectivePoint = streetViewPanoramaData.location.latLng;
+                    handleSettings(perspectivePoint, focalPoint);
+                    ele = element[0];
+                    return pano = new google.maps.StreetViewPanorama(ele, opts);
+                  }
+                });
+              };
+              if (scope.control != null) {
+                scope.control.getOptions = function() {
+                  return opts;
+                };
+                scope.control.getPovOptions = function() {
+                  return povOpts;
+                };
+                scope.control.getGObject = function() {
+                  return sv;
+                };
+                scope.control.getGPano = function() {
+                  return pano;
+                };
+              }
+              scope.$watch('options', function(newValue, oldValue) {
+                if (newValue === oldValue || newValue === opts || didCreateOptionsFromDirective) {
+                  return;
+                }
+                return create();
+              });
+              firstTime = true;
+              scope.$watch('focalcoord', function(newValue, oldValue) {
+                if (newValue === oldValue && !firstTime) {
+                  return;
+                }
+                if (newValue == null) {
+                  return;
+                }
+                firstTime = false;
+                return create();
+              });
+              return scope.$on('$destroy', function() {
+                return clean();
+              });
+            };
+          })(this));
+        }
+      };
+    }
+  ]);
+
+}).call(this);
 ;angular.module('uiGmapgoogle-maps.wrapped')
 .service('uiGmapuuid', function() {
   //BEGIN REPLACE
+  /* istanbul ignore next */
   /*
  Version: core-1.0
  The MIT License: Copyright (c) 2012 LiosK.
@@ -7480,9 +8189,11 @@ angular.module('uiGmapgoogle-maps.wrapped')
   return {
     init: _.once(function () {
       //BEGIN REPLACE
+      /* istanbul ignore next */
+      +function(){
       /**
  * @name InfoBox
- * @version 1.1.12 [December 11, 2012]
+ * @version 1.1.13 [March 19, 2014]
  * @author Gary Little (inspired by proof-of-concept code from Pamela Fox of Google)
  * @copyright Copyright 2010 Gary Little [gary at luxcentral.com]
  * @fileoverview InfoBox extends the Google Maps JavaScript API V3 <tt>OverlayView</tt> class.
@@ -7882,10 +8593,15 @@ InfoBox.prototype.setBoxStyle_ = function () {
       }
     }
 
+    // Fix for iOS disappearing InfoBox problem.
+    // See http://stackoverflow.com/questions/9229535/google-maps-markers-disappear-at-certain-zoom-level-only-on-iphone-ipad
+    this.div_.style.WebkitTransform = "translateZ(0)";
+
     // Fix up opacity style for benefit of MSIE:
     //
     if (typeof this.div_.style.opacity !== "undefined" && this.div_.style.opacity !== "") {
-
+      // See http://www.quirksmode.org/css/opacity.html
+      this.div_.style.MsFilter = "\"progid:DXImageTransform.Microsoft.Alpha(Opacity=" + (this.div_.style.opacity * 100) + ")\"";
       this.div_.style.filter = "alpha(opacity=" + (this.div_.style.opacity * 100) + ")";
     }
 
@@ -7970,7 +8686,7 @@ InfoBox.prototype.draw = function () {
 
   if (this.isHidden_) {
 
-    this.div_.style.visibility = 'hidden';
+    this.div_.style.visibility = "hidden";
 
   } else {
 
@@ -10797,7 +11513,7 @@ MarkerClusterer.IMAGE_SIZES = [53, 56, 66, 78, 90];
 
 /**
  * @name MarkerWithLabel for V3
- * @version 1.1.9 [June 30, 2013]
+ * @version 1.1.10 [April 8, 2014]
  * @author Gary Little (inspired by code from Marc Ridey of Google).
  * @copyright Copyright 2012 Gary Little [gary at luxcentral.com]
  * @fileoverview MarkerWithLabel extends the Google Maps JavaScript API V3
@@ -10835,14 +11551,15 @@ MarkerClusterer.IMAGE_SIZES = [53, 56, 66, 78, 90];
 /**
  * @param {Function} childCtor Child class.
  * @param {Function} parentCtor Parent class.
+ * @private
  */
 function inherits(childCtor, parentCtor) {
-  /** @constructor */
-  function tempCtor() {};
+  /* @constructor */
+  function tempCtor() {}
   tempCtor.prototype = parentCtor.prototype;
   childCtor.superClass_ = parentCtor.prototype;
   childCtor.prototype = new tempCtor();
-  /** @override */
+  /* @override */
   childCtor.prototype.constructor = childCtor;
 }
 
@@ -10876,6 +11593,7 @@ function MarkerLabel_(marker, crossURL, handCursorURL) {
   // Get the DIV for the "X" to be displayed when the marker is raised.
   this.crossDiv_ = MarkerLabel_.getSharedCross(crossURL);
 }
+
 inherits(MarkerLabel_, google.maps.OverlayView);
 
 /**
@@ -11146,6 +11864,7 @@ MarkerLabel_.prototype.setContent = function () {
     this.labelDiv_.innerHTML = ""; // Remove current content
     this.labelDiv_.appendChild(content);
     content = content.cloneNode(true);
+    this.eventDiv_.innerHTML = ""; // Remove current content
     this.eventDiv_.appendChild(content);
   }
 };
@@ -11358,6 +12077,7 @@ function MarkerWithLabel(opt_options) {
   // that the marker label listens for in order to react to state changes.
   google.maps.Marker.apply(this, arguments);
 }
+
 inherits(MarkerWithLabel, google.maps.Marker);
 
 /**
@@ -11374,54 +12094,880 @@ MarkerWithLabel.prototype.setMap = function (theMap) {
   this.label.setMap(theMap);
 };
 
+// ==ClosureCompiler==
+// @compilation_level ADVANCED_OPTIMIZATIONS
+// @externs_url http://closure-compiler.googlecode.com/svn/trunk/contrib/externs/maps/google_maps_api_v3.js
+// @output_wrapper (function() {%output%})();
+// ==/ClosureCompiler==
+
+/**
+ * @license
+ * Copyright 2013 Google Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * A RichMarker that allows any HTML/DOM to be added to a map and be draggable.
+ *
+ * @param {Object.<string, *>=} opt_options Optional properties to set.
+ * @extends {google.maps.OverlayView}
+ * @constructor
+ */
+function RichMarker(opt_options) {
+  var options = opt_options || {};
+
+  /**
+   * @type {boolean}
+   * @private
+   */
+  this.ready_ = false;
+
+  /**
+   * @type {boolean}
+   * @private
+   */
+  this.dragging_ = false;
+
+  if (opt_options['visible'] == undefined) {
+    opt_options['visible'] = true;
+  }
+
+  if (opt_options['shadow'] == undefined) {
+    opt_options['shadow'] = '7px -3px 5px rgba(88,88,88,0.7)';
+  }
+
+  if (opt_options['anchor'] == undefined) {
+    opt_options['anchor'] = RichMarkerPosition['BOTTOM'];
+  }
+
+  this.setValues(options);
+}
+RichMarker.prototype = new google.maps.OverlayView();
+window['RichMarker'] = RichMarker;
+
+
+/**
+ * Returns the current visibility state of the marker.
+ *
+ * @return {boolean} The visiblity of the marker.
+ */
+RichMarker.prototype.getVisible = function() {
+  return /** @type {boolean} */ (this.get('visible'));
+};
+RichMarker.prototype['getVisible'] = RichMarker.prototype.getVisible;
+
+
+/**
+ * Sets the visiblility state of the marker.
+ *
+ * @param {boolean} visible The visiblilty of the marker.
+ */
+RichMarker.prototype.setVisible = function(visible) {
+  this.set('visible', visible);
+};
+RichMarker.prototype['setVisible'] = RichMarker.prototype.setVisible;
+
+
+/**
+ *  The visible changed event.
+ */
+RichMarker.prototype.visible_changed = function() {
+  if (this.ready_) {
+    this.markerWrapper_.style['display'] = this.getVisible() ? '' : 'none';
+    this.draw();
+  }
+};
+RichMarker.prototype['visible_changed'] = RichMarker.prototype.visible_changed;
+
+
+/**
+ * Sets the marker to be flat.
+ *
+ * @param {boolean} flat If the marker is to be flat or not.
+ */
+RichMarker.prototype.setFlat = function(flat) {
+  this.set('flat', !!flat);
+};
+RichMarker.prototype['setFlat'] = RichMarker.prototype.setFlat;
+
+
+/**
+ * If the makrer is flat or not.
+ *
+ * @return {boolean} True the marker is flat.
+ */
+RichMarker.prototype.getFlat = function() {
+  return /** @type {boolean} */ (this.get('flat'));
+};
+RichMarker.prototype['getFlat'] = RichMarker.prototype.getFlat;
+
+
+/**
+ * Get the width of the marker.
+ *
+ * @return {Number} The width of the marker.
+ */
+RichMarker.prototype.getWidth = function() {
+  return /** @type {Number} */ (this.get('width'));
+};
+RichMarker.prototype['getWidth'] = RichMarker.prototype.getWidth;
+
+
+/**
+ * Get the height of the marker.
+ *
+ * @return {Number} The height of the marker.
+ */
+RichMarker.prototype.getHeight = function() {
+  return /** @type {Number} */ (this.get('height'));
+};
+RichMarker.prototype['getHeight'] = RichMarker.prototype.getHeight;
+
+
+/**
+ * Sets the marker's box shadow.
+ *
+ * @param {string} shadow The box shadow to set.
+ */
+RichMarker.prototype.setShadow = function(shadow) {
+  this.set('shadow', shadow);
+  this.flat_changed();
+};
+RichMarker.prototype['setShadow'] = RichMarker.prototype.setShadow;
+
+
+/**
+ * Gets the marker's box shadow.
+ *
+ * @return {string} The box shadow.
+ */
+RichMarker.prototype.getShadow = function() {
+  return /** @type {string} */ (this.get('shadow'));
+};
+RichMarker.prototype['getShadow'] = RichMarker.prototype.getShadow;
+
+
+/**
+ * Flat changed event.
+ */
+RichMarker.prototype.flat_changed = function() {
+  if (!this.ready_) {
+    return;
+  }
+
+  this.markerWrapper_.style['boxShadow'] =
+      this.markerWrapper_.style['webkitBoxShadow'] =
+      this.markerWrapper_.style['MozBoxShadow'] =
+      this.getFlat() ? '' : this.getShadow();
+};
+RichMarker.prototype['flat_changed'] = RichMarker.prototype.flat_changed;
+
+
+/**
+ * Sets the zIndex of the marker.
+ *
+ * @param {Number} index The index to set.
+ */
+RichMarker.prototype.setZIndex = function(index) {
+  this.set('zIndex', index);
+};
+RichMarker.prototype['setZIndex'] = RichMarker.prototype.setZIndex;
+
+
+/**
+ * Gets the zIndex of the marker.
+ *
+ * @return {Number} The zIndex of the marker.
+ */
+RichMarker.prototype.getZIndex = function() {
+  return /** @type {Number} */ (this.get('zIndex'));
+};
+RichMarker.prototype['getZIndex'] = RichMarker.prototype.getZIndex;
+
+
+/**
+ * zIndex changed event.
+ */
+RichMarker.prototype.zIndex_changed = function() {
+  if (this.getZIndex() && this.ready_) {
+    this.markerWrapper_.style.zIndex = this.getZIndex();
+  }
+};
+RichMarker.prototype['zIndex_changed'] = RichMarker.prototype.zIndex_changed;
+
+/**
+ * Whether the marker is draggable or not.
+ *
+ * @return {boolean} True if the marker is draggable.
+ */
+RichMarker.prototype.getDraggable = function() {
+  return /** @type {boolean} */ (this.get('draggable'));
+};
+RichMarker.prototype['getDraggable'] = RichMarker.prototype.getDraggable;
+
+
+/**
+ * Sets the marker to be draggable or not.
+ *
+ * @param {boolean} draggable If the marker is draggable or not.
+ */
+RichMarker.prototype.setDraggable = function(draggable) {
+  this.set('draggable', !!draggable);
+};
+RichMarker.prototype['setDraggable'] = RichMarker.prototype.setDraggable;
+
+
+/**
+ * Draggable property changed callback.
+ */
+RichMarker.prototype.draggable_changed = function() {
+  if (this.ready_) {
+    if (this.getDraggable()) {
+      this.addDragging_(this.markerWrapper_);
+    } else {
+      this.removeDragListeners_();
+    }
+  }
+};
+RichMarker.prototype['draggable_changed'] =
+    RichMarker.prototype.draggable_changed;
+
+
+/**
+ * Gets the postiton of the marker.
+ *
+ * @return {google.maps.LatLng} The position of the marker.
+ */
+RichMarker.prototype.getPosition = function() {
+  return /** @type {google.maps.LatLng} */ (this.get('position'));
+};
+RichMarker.prototype['getPosition'] = RichMarker.prototype.getPosition;
+
+
+/**
+ * Sets the position of the marker.
+ *
+ * @param {google.maps.LatLng} position The position to set.
+ */
+RichMarker.prototype.setPosition = function(position) {
+  this.set('position', position);
+};
+RichMarker.prototype['setPosition'] = RichMarker.prototype.setPosition;
+
+
+/**
+ * Position changed event.
+ */
+RichMarker.prototype.position_changed = function() {
+  this.draw();
+};
+RichMarker.prototype['position_changed'] =
+    RichMarker.prototype.position_changed;
+
+
+/**
+ * Gets the anchor.
+ *
+ * @return {google.maps.Size} The position of the anchor.
+ */
+RichMarker.prototype.getAnchor = function() {
+  return /** @type {google.maps.Size} */ (this.get('anchor'));
+};
+RichMarker.prototype['getAnchor'] = RichMarker.prototype.getAnchor;
+
+
+/**
+ * Sets the anchor.
+ *
+ * @param {RichMarkerPosition|google.maps.Size} anchor The anchor to set.
+ */
+RichMarker.prototype.setAnchor = function(anchor) {
+  this.set('anchor', anchor);
+};
+RichMarker.prototype['setAnchor'] = RichMarker.prototype.setAnchor;
+
+
+/**
+ * Anchor changed event.
+ */
+RichMarker.prototype.anchor_changed = function() {
+  this.draw();
+};
+RichMarker.prototype['anchor_changed'] = RichMarker.prototype.anchor_changed;
+
+
+/**
+ * Converts a HTML string to a document fragment.
+ *
+ * @param {string} htmlString The HTML string to convert.
+ * @return {Node} A HTML document fragment.
+ * @private
+ */
+RichMarker.prototype.htmlToDocumentFragment_ = function(htmlString) {
+  var tempDiv = document.createElement('DIV');
+  tempDiv.innerHTML = htmlString;
+  if (tempDiv.childNodes.length == 1) {
+    return /** @type {!Node} */ (tempDiv.removeChild(tempDiv.firstChild));
+  } else {
+    var fragment = document.createDocumentFragment();
+    while (tempDiv.firstChild) {
+      fragment.appendChild(tempDiv.firstChild);
+    }
+    return fragment;
+  }
+};
+
+
+/**
+ * Removes all children from the node.
+ *
+ * @param {Node} node The node to remove all children from.
+ * @private
+ */
+RichMarker.prototype.removeChildren_ = function(node) {
+  if (!node) {
+    return;
+  }
+
+  var child;
+  while (child = node.firstChild) {
+    node.removeChild(child);
+  }
+};
+
+
+/**
+ * Sets the content of the marker.
+ *
+ * @param {string|Node} content The content to set.
+ */
+RichMarker.prototype.setContent = function(content) {
+  this.set('content', content);
+};
+RichMarker.prototype['setContent'] = RichMarker.prototype.setContent;
+
+
+/**
+ * Get the content of the marker.
+ *
+ * @return {string|Node} The marker content.
+ */
+RichMarker.prototype.getContent = function() {
+  return /** @type {Node|string} */ (this.get('content'));
+};
+RichMarker.prototype['getContent'] = RichMarker.prototype.getContent;
+
+
+/**
+ * Sets the marker content and adds loading events to images
+ */
+RichMarker.prototype.content_changed = function() {
+  if (!this.markerContent_) {
+    // Marker content area doesnt exist.
+    return;
+  }
+
+  this.removeChildren_(this.markerContent_);
+  var content = this.getContent();
+  if (content) {
+    if (typeof content == 'string') {
+      content = content.replace(/^\s*([\S\s]*)\b\s*$/, '$1');
+      content = this.htmlToDocumentFragment_(content);
+    }
+    this.markerContent_.appendChild(content);
+
+    var that = this;
+    var images = this.markerContent_.getElementsByTagName('IMG');
+    for (var i = 0, image; image = images[i]; i++) {
+      // By default, a browser lets a image be dragged outside of the browser,
+      // so by calling preventDefault we stop this behaviour and allow the image
+      // to be dragged around the map and now out of the browser and onto the
+      // desktop.
+      google.maps.event.addDomListener(image, 'mousedown', function(e) {
+        if (that.getDraggable()) {
+          if (e.preventDefault) {
+            e.preventDefault();
+          }
+          e.returnValue = false;
+        }
+      });
+
+      // Because we don't know the size of an image till it loads, add a
+      // listener to the image load so the marker can resize and reposition
+      // itself to be the correct height.
+      google.maps.event.addDomListener(image, 'load', function() {
+        that.draw();
+      });
+    }
+
+    google.maps.event.trigger(this, 'domready');
+  }
+
+  if (this.ready_) {
+    this.draw();
+  }
+};
+RichMarker.prototype['content_changed'] = RichMarker.prototype.content_changed;
+
+/**
+ * Sets the cursor.
+ *
+ * @param {string} whichCursor What cursor to show.
+ * @private
+ */
+RichMarker.prototype.setCursor_ = function(whichCursor) {
+  if (!this.ready_) {
+    return;
+  }
+
+  var cursor = '';
+  if (navigator.userAgent.indexOf('Gecko/') !== -1) {
+    // Moz has some nice cursors :)
+    if (whichCursor == 'dragging') {
+      cursor = '-moz-grabbing';
+    }
+
+    if (whichCursor == 'dragready') {
+      cursor = '-moz-grab';
+    }
+
+    if (whichCursor == 'draggable') {
+      cursor = 'pointer';
+    }
+  } else {
+    if (whichCursor == 'dragging' || whichCursor == 'dragready') {
+      cursor = 'move';
+    }
+
+    if (whichCursor == 'draggable') {
+      cursor = 'pointer';
+    }
+  }
+
+  if (this.markerWrapper_.style.cursor != cursor) {
+    this.markerWrapper_.style.cursor = cursor;
+  }
+};
+
+/**
+ * Start dragging.
+ *
+ * @param {Event} e The event.
+ */
+RichMarker.prototype.startDrag = function(e) {
+  if (!this.getDraggable()) {
+    return;
+  }
+
+  if (!this.dragging_) {
+    this.dragging_ = true;
+    var map = this.getMap();
+    this.mapDraggable_ = map.get('draggable');
+    map.set('draggable', false);
+
+    // Store the current mouse position
+    this.mouseX_ = e.clientX;
+    this.mouseY_ = e.clientY;
+
+    this.setCursor_('dragready');
+
+    // Stop the text from being selectable while being dragged
+    this.markerWrapper_.style['MozUserSelect'] = 'none';
+    this.markerWrapper_.style['KhtmlUserSelect'] = 'none';
+    this.markerWrapper_.style['WebkitUserSelect'] = 'none';
+
+    this.markerWrapper_['unselectable'] = 'on';
+    this.markerWrapper_['onselectstart'] = function() {
+      return false;
+    };
+
+    this.addDraggingListeners_();
+
+    google.maps.event.trigger(this, 'dragstart');
+  }
+};
+
+
+/**
+ * Stop dragging.
+ */
+RichMarker.prototype.stopDrag = function() {
+  if (!this.getDraggable()) {
+    return;
+  }
+
+  if (this.dragging_) {
+    this.dragging_ = false;
+    this.getMap().set('draggable', this.mapDraggable_);
+    this.mouseX_ = this.mouseY_ = this.mapDraggable_ = null;
+
+    // Allow the text to be selectable again
+    this.markerWrapper_.style['MozUserSelect'] = '';
+    this.markerWrapper_.style['KhtmlUserSelect'] = '';
+    this.markerWrapper_.style['WebkitUserSelect'] = '';
+    this.markerWrapper_['unselectable'] = 'off';
+    this.markerWrapper_['onselectstart'] = function() {};
+
+    this.removeDraggingListeners_();
+
+    this.setCursor_('draggable');
+    google.maps.event.trigger(this, 'dragend');
+
+    this.draw();
+  }
+};
+
+
+/**
+ * Handles the drag event.
+ *
+ * @param {Event} e The event.
+ */
+RichMarker.prototype.drag = function(e) {
+  if (!this.getDraggable() || !this.dragging_) {
+    // This object isn't draggable or we have stopped dragging
+    this.stopDrag();
+    return;
+  }
+
+  var dx = this.mouseX_ - e.clientX;
+  var dy = this.mouseY_ - e.clientY;
+
+  this.mouseX_ = e.clientX;
+  this.mouseY_ = e.clientY;
+
+  var left = parseInt(this.markerWrapper_.style['left'], 10) - dx;
+  var top = parseInt(this.markerWrapper_.style['top'], 10) - dy;
+
+  this.markerWrapper_.style['left'] = left + 'px';
+  this.markerWrapper_.style['top'] = top + 'px';
+
+  var offset = this.getOffset_();
+
+  // Set the position property and adjust for the anchor offset
+  var point = new google.maps.Point(left - offset.width, top - offset.height);
+  var projection = this.getProjection();
+  this.setPosition(projection.fromDivPixelToLatLng(point));
+
+  this.setCursor_('dragging');
+  google.maps.event.trigger(this, 'drag');
+};
+
+
+/**
+ * Removes the drag listeners associated with the marker.
+ *
+ * @private
+ */
+RichMarker.prototype.removeDragListeners_ = function() {
+  if (this.draggableListener_) {
+    google.maps.event.removeListener(this.draggableListener_);
+    delete this.draggableListener_;
+  }
+  this.setCursor_('');
+};
+
+
+/**
+ * Add dragability events to the marker.
+ *
+ * @param {Node} node The node to apply dragging to.
+ * @private
+ */
+RichMarker.prototype.addDragging_ = function(node) {
+  if (!node) {
+    return;
+  }
+
+  var that = this;
+  this.draggableListener_ =
+    google.maps.event.addDomListener(node, 'mousedown', function(e) {
+      that.startDrag(e);
+    });
+
+  this.setCursor_('draggable');
+};
+
+
+/**
+ * Add dragging listeners.
+ *
+ * @private
+ */
+RichMarker.prototype.addDraggingListeners_ = function() {
+  var that = this;
+  if (this.markerWrapper_.setCapture) {
+    this.markerWrapper_.setCapture(true);
+    this.draggingListeners_ = [
+      google.maps.event.addDomListener(this.markerWrapper_, 'mousemove', function(e) {
+        that.drag(e);
+      }, true),
+      google.maps.event.addDomListener(this.markerWrapper_, 'mouseup', function() {
+        that.stopDrag();
+        that.markerWrapper_.releaseCapture();
+      }, true)
+    ];
+  } else {
+    this.draggingListeners_ = [
+      google.maps.event.addDomListener(window, 'mousemove', function(e) {
+        that.drag(e);
+      }, true),
+      google.maps.event.addDomListener(window, 'mouseup', function() {
+        that.stopDrag();
+      }, true)
+    ];
+  }
+};
+
+
+/**
+ * Remove dragging listeners.
+ *
+ * @private
+ */
+RichMarker.prototype.removeDraggingListeners_ = function() {
+  if (this.draggingListeners_) {
+    for (var i = 0, listener; listener = this.draggingListeners_[i]; i++) {
+      google.maps.event.removeListener(listener);
+    }
+    this.draggingListeners_.length = 0;
+  }
+};
+
+
+/**
+ * Get the anchor offset.
+ *
+ * @return {google.maps.Size} The size offset.
+ * @private
+ */
+RichMarker.prototype.getOffset_ = function() {
+  var anchor = this.getAnchor();
+  if (typeof anchor == 'object') {
+    return /** @type {google.maps.Size} */ (anchor);
+  }
+
+  var offset = new google.maps.Size(0, 0);
+  if (!this.markerContent_) {
+    return offset;
+  }
+
+  var width = this.markerContent_.offsetWidth;
+  var height = this.markerContent_.offsetHeight;
+
+  switch (anchor) {
+   case RichMarkerPosition['TOP_LEFT']:
+     break;
+   case RichMarkerPosition['TOP']:
+     offset.width = -width / 2;
+     break;
+   case RichMarkerPosition['TOP_RIGHT']:
+     offset.width = -width;
+     break;
+   case RichMarkerPosition['LEFT']:
+     offset.height = -height / 2;
+     break;
+   case RichMarkerPosition['MIDDLE']:
+     offset.width = -width / 2;
+     offset.height = -height / 2;
+     break;
+   case RichMarkerPosition['RIGHT']:
+     offset.width = -width;
+     offset.height = -height / 2;
+     break;
+   case RichMarkerPosition['BOTTOM_LEFT']:
+     offset.height = -height;
+     break;
+   case RichMarkerPosition['BOTTOM']:
+     offset.width = -width / 2;
+     offset.height = -height;
+     break;
+   case RichMarkerPosition['BOTTOM_RIGHT']:
+     offset.width = -width;
+     offset.height = -height;
+     break;
+  }
+
+  return offset;
+};
+
+
+/**
+ * Adding the marker to a map.
+ * Implementing the interface.
+ */
+RichMarker.prototype.onAdd = function() {
+  if (!this.markerWrapper_) {
+    this.markerWrapper_ = document.createElement('DIV');
+    this.markerWrapper_.style['position'] = 'absolute';
+  }
+
+  if (this.getZIndex()) {
+    this.markerWrapper_.style['zIndex'] = this.getZIndex();
+  }
+
+  this.markerWrapper_.style['display'] = this.getVisible() ? '' : 'none';
+
+  if (!this.markerContent_) {
+    this.markerContent_ = document.createElement('DIV');
+    this.markerWrapper_.appendChild(this.markerContent_);
+
+    var that = this;
+    google.maps.event.addDomListener(this.markerContent_, 'click', function(e) {
+      google.maps.event.trigger(that, 'click');
+    });
+    google.maps.event.addDomListener(this.markerContent_, 'mouseover', function(e) {
+      google.maps.event.trigger(that, 'mouseover');
+    });
+    google.maps.event.addDomListener(this.markerContent_, 'mouseout', function(e) {
+      google.maps.event.trigger(that, 'mouseout');
+    });
+  }
+
+  this.ready_ = true;
+  this.content_changed();
+  this.flat_changed();
+  this.draggable_changed();
+
+  var panes = this.getPanes();
+  if (panes) {
+    panes.overlayMouseTarget.appendChild(this.markerWrapper_);
+  }
+
+  google.maps.event.trigger(this, 'ready');
+};
+RichMarker.prototype['onAdd'] = RichMarker.prototype.onAdd;
+
+
+/**
+ * Impelementing the interface.
+ */
+RichMarker.prototype.draw = function() {
+  if (!this.ready_ || this.dragging_) {
+    return;
+  }
+
+  var projection = this.getProjection();
+
+  if (!projection) {
+    // The map projection is not ready yet so do nothing
+    return;
+  }
+
+  var latLng = /** @type {google.maps.LatLng} */ (this.get('position'));
+  var pos = projection.fromLatLngToDivPixel(latLng);
+
+  var offset = this.getOffset_();
+  this.markerWrapper_.style['top'] = (pos.y + offset.height) + 'px';
+  this.markerWrapper_.style['left'] = (pos.x + offset.width) + 'px';
+
+  var height = this.markerContent_.offsetHeight;
+  var width = this.markerContent_.offsetWidth;
+
+  if (width != this.get('width')) {
+    this.set('width', width);
+  }
+
+  if (height != this.get('height')) {
+    this.set('height', height);
+  }
+};
+RichMarker.prototype['draw'] = RichMarker.prototype.draw;
+
+
+/**
+ * Removing a marker from the map.
+ * Implementing the interface.
+ */
+RichMarker.prototype.onRemove = function() {
+  if (this.markerWrapper_ && this.markerWrapper_.parentNode) {
+    this.markerWrapper_.parentNode.removeChild(this.markerWrapper_);
+  }
+  this.removeDragListeners_();
+};
+RichMarker.prototype['onRemove'] = RichMarker.prototype.onRemove;
+
+
+/**
+ * RichMarker Anchor positions
+ * @enum {number}
+ */
+var RichMarkerPosition = {
+  'TOP_LEFT': 1,
+  'TOP': 2,
+  'TOP_RIGHT': 3,
+  'LEFT': 4,
+  'MIDDLE': 5,
+  'RIGHT': 6,
+  'BOTTOM_LEFT': 7,
+  'BOTTOM': 8,
+  'BOTTOM_RIGHT': 9
+};
+window['RichMarkerPosition'] = RichMarkerPosition;
+
+
+        //TODO: export / passthese on in the service instead of window
+        window.InfoBox = InfoBox;
+        window.Cluster = Cluster;
+        window.ClusterIcon = ClusterIcon;
+        window.MarkerClusterer = MarkerClusterer;
+        window.MarkerLabel_ = MarkerLabel_;
+        window.MarkerWithLabel = MarkerWithLabel;
+        window.RichMarker = RichMarker;
+      }();
       //END REPLACE
-      window.InfoBox = InfoBox;
-      window.Cluster = Cluster;
-      window.ClusterIcon = ClusterIcon;
-      window.MarkerClusterer = MarkerClusterer;
-      window.MarkerLabel_ = MarkerLabel_;
-      window.MarkerWithLabel = MarkerWithLabel;
     })
   };
 });
 ;/******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
-/******/
+
 /******/ 	// The require function
 /******/ 	function __webpack_require__(moduleId) {
-/******/
+
 /******/ 		// Check if module is in cache
 /******/ 		if(installedModules[moduleId])
 /******/ 			return installedModules[moduleId].exports;
-/******/
+
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = installedModules[moduleId] = {
 /******/ 			exports: {},
 /******/ 			id: moduleId,
 /******/ 			loaded: false
 /******/ 		};
-/******/
+
 /******/ 		// Execute the module function
 /******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
-/******/
+
 /******/ 		// Flag the module as loaded
 /******/ 		module.loaded = true;
-/******/
+
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
 /******/ 	}
-/******/
-/******/
+
+
 /******/ 	// expose the modules object (__webpack_modules__)
 /******/ 	__webpack_require__.m = modules;
-/******/
+
 /******/ 	// expose the module cache
 /******/ 	__webpack_require__.c = installedModules;
-/******/
+
 /******/ 	// __webpack_public_path__
 /******/ 	__webpack_require__.p = "";
-/******/
+
 /******/ 	// Load entry module and return exports
 /******/ 	return __webpack_require__(0);
 /******/ })
@@ -11430,6 +12976,7 @@ MarkerWithLabel.prototype.setMap = function (theMap) {
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
+	/* istanbul ignore next */
 	angular.module('uiGmapgoogle-maps.wrapped')
 	.service('uiGmapDataStructures', function() {
 	return {
@@ -11459,7 +13006,7 @@ MarkerWithLabel.prototype.setMap = function (theMap) {
 
 /***/ },
 /* 2 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
 	/*
 	Graph implemented as a modified incidence list. O(1) for every typical
@@ -11753,7 +13300,7 @@ MarkerWithLabel.prototype.setMap = function (theMap) {
 
 /***/ },
 /* 3 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
 	/*
 	Minimum heap, i.e. smallest node at root.
@@ -11900,7 +13447,7 @@ MarkerWithLabel.prototype.setMap = function (theMap) {
 
 /***/ },
 /* 4 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
 	/*
 	Doubly Linked.
@@ -12177,7 +13724,7 @@ MarkerWithLabel.prototype.setMap = function (theMap) {
 
 /***/ },
 /* 5 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
 	/*
 	Kind of a stopgap measure for the upcoming [JavaScript
@@ -12368,7 +13915,7 @@ MarkerWithLabel.prototype.setMap = function (theMap) {
 
 /***/ },
 /* 6 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
 	/*
 	Amortized O(1) dequeue!
@@ -12460,7 +14007,7 @@ MarkerWithLabel.prototype.setMap = function (theMap) {
 
 /***/ },
 /* 7 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
 	/*
 	Credit to Wikipedia's article on [Red-black
@@ -13175,13 +14722,587 @@ MarkerWithLabel.prototype.setMap = function (theMap) {
 
 
 /***/ }
-/******/ ]);/**
+/******/ ]);;angular.module('uiGmapgoogle-maps.wrapped')
+.service('uiGmapMarkerSpiderfier', [ 'uiGmapGoogleMapApi', function(GoogleMapApi) {
+  var self = this;
+  /* istanbul ignore next */
+  +function(){
+    
+/** @preserve OverlappingMarkerSpiderfier
+https://github.com/jawj/OverlappingMarkerSpiderfier
+Copyright (c) 2011 - 2013 George MacKerron
+Released under the MIT licence: http://opensource.org/licenses/mit-license
+Note: The Google Maps API v3 must be included *before* this code
+ */
+var hasProp = {}.hasOwnProperty,
+  slice = [].slice;
+
+this['OverlappingMarkerSpiderfier'] = (function() {
+  var ge, gm, j, lcH, lcU, len, mt, p, ref, twoPi, x;
+
+  p = _Class.prototype;
+
+  ref = [_Class, p];
+  for (j = 0, len = ref.length; j < len; j++) {
+    x = ref[j];
+    x['VERSION'] = '0.3.3';
+  }
+
+  gm = void 0;
+
+  ge = void 0;
+
+  mt = void 0;
+
+  twoPi = Math.PI * 2;
+
+  p['keepSpiderfied'] = false;
+
+  p['markersWontHide'] = false;
+
+  p['markersWontMove'] = false;
+
+  p['nearbyDistance'] = 20;
+
+  p['circleSpiralSwitchover'] = 9;
+
+  p['circleFootSeparation'] = 23;
+
+  p['circleStartAngle'] = twoPi / 12;
+
+  p['spiralFootSeparation'] = 26;
+
+  p['spiralLengthStart'] = 11;
+
+  p['spiralLengthFactor'] = 4;
+
+  p['spiderfiedZIndex'] = 1000;
+
+  p['usualLegZIndex'] = 10;
+
+  p['highlightedLegZIndex'] = 20;
+
+  p['event'] = 'click';
+
+  p['minZoomLevel'] = false;
+
+  p['legWeight'] = 1.5;
+
+  p['legColors'] = {
+    'usual': {},
+    'highlighted': {}
+  };
+
+  lcU = p['legColors']['usual'];
+
+  lcH = p['legColors']['highlighted'];
+
+  _Class['initializeGoogleMaps'] = function(google) {
+    gm = google.maps;
+    ge = gm.event;
+    mt = gm.MapTypeId;
+    lcU[mt.HYBRID] = lcU[mt.SATELLITE] = '#fff';
+    lcH[mt.HYBRID] = lcH[mt.SATELLITE] = '#f00';
+    lcU[mt.TERRAIN] = lcU[mt.ROADMAP] = '#444';
+    lcH[mt.TERRAIN] = lcH[mt.ROADMAP] = '#f00';
+    this.ProjHelper = function(map) {
+      return this.setMap(map);
+    };
+    this.ProjHelper.prototype = new gm.OverlayView();
+    return this.ProjHelper.prototype['draw'] = function() {};
+  };
+
+  function _Class(map1, opts) {
+    var e, k, l, len1, ref1, v;
+    this.map = map1;
+    if (opts == null) {
+      opts = {};
+    }
+    for (k in opts) {
+      if (!hasProp.call(opts, k)) continue;
+      v = opts[k];
+      this[k] = v;
+    }
+    this.projHelper = new this.constructor.ProjHelper(this.map);
+    this.initMarkerArrays();
+    this.listeners = {};
+    ref1 = ['click', 'zoom_changed', 'maptypeid_changed'];
+    for (l = 0, len1 = ref1.length; l < len1; l++) {
+      e = ref1[l];
+      ge.addListener(this.map, e, (function(_this) {
+        return function() {
+          return _this['unspiderfy']();
+        };
+      })(this));
+    }
+  }
+
+  p.initMarkerArrays = function() {
+    this.markers = [];
+    return this.markerListenerRefs = [];
+  };
+
+  p['addMarker'] = function(marker) {
+    var listenerRefs;
+    if (marker['_oms'] != null) {
+      return this;
+    }
+    marker['_oms'] = true;
+    listenerRefs = [
+      ge.addListener(marker, this['event'], (function(_this) {
+        return function(event) {
+          return _this.spiderListener(marker, event);
+        };
+      })(this))
+    ];
+    if (!this['markersWontHide']) {
+      listenerRefs.push(ge.addListener(marker, 'visible_changed', (function(_this) {
+        return function() {
+          return _this.markerChangeListener(marker, false);
+        };
+      })(this)));
+    }
+    if (!this['markersWontMove']) {
+      listenerRefs.push(ge.addListener(marker, 'position_changed', (function(_this) {
+        return function() {
+          return _this.markerChangeListener(marker, true);
+        };
+      })(this)));
+    }
+    this.markerListenerRefs.push(listenerRefs);
+    this.markers.push(marker);
+    return this;
+  };
+
+  p.markerChangeListener = function(marker, positionChanged) {
+    if ((marker['_omsData'] != null) && (positionChanged || !marker.getVisible()) && !((this.spiderfying != null) || (this.unspiderfying != null))) {
+      return this['unspiderfy'](positionChanged ? marker : null);
+    }
+  };
+
+  p['getMarkers'] = function() {
+    return this.markers.slice(0);
+  };
+
+  p['removeMarker'] = function(marker) {
+    var i, l, len1, listenerRef, listenerRefs;
+    if (marker['_omsData'] != null) {
+      this['unspiderfy']();
+    }
+    i = this.arrIndexOf(this.markers, marker);
+    if (i < 0) {
+      return this;
+    }
+    listenerRefs = this.markerListenerRefs.splice(i, 1)[0];
+    for (l = 0, len1 = listenerRefs.length; l < len1; l++) {
+      listenerRef = listenerRefs[l];
+      ge.removeListener(listenerRef);
+    }
+    delete marker['_oms'];
+    this.markers.splice(i, 1);
+    return this;
+  };
+
+  p['clearMarkers'] = function() {
+    var i, l, len1, len2, listenerRef, listenerRefs, marker, n, ref1;
+    this['unspiderfy']();
+    ref1 = this.markers;
+    for (i = l = 0, len1 = ref1.length; l < len1; i = ++l) {
+      marker = ref1[i];
+      listenerRefs = this.markerListenerRefs[i];
+      for (n = 0, len2 = listenerRefs.length; n < len2; n++) {
+        listenerRef = listenerRefs[n];
+        ge.removeListener(listenerRef);
+      }
+      delete marker['_oms'];
+    }
+    this.initMarkerArrays();
+    return this;
+  };
+
+  p['addListener'] = function(event, func) {
+    var base;
+    ((base = this.listeners)[event] != null ? base[event] : base[event] = []).push(func);
+    return this;
+  };
+
+  p['removeListener'] = function(event, func) {
+    var i;
+    i = this.arrIndexOf(this.listeners[event], func);
+    if (!(i < 0)) {
+      this.listeners[event].splice(i, 1);
+    }
+    return this;
+  };
+
+  p['clearListeners'] = function(event) {
+    this.listeners[event] = [];
+    return this;
+  };
+
+  p.trigger = function() {
+    var args, event, func, l, len1, ref1, ref2, results;
+    event = arguments[0], args = 2 <= arguments.length ? slice.call(arguments, 1) : [];
+    ref2 = (ref1 = this.listeners[event]) != null ? ref1 : [];
+    results = [];
+    for (l = 0, len1 = ref2.length; l < len1; l++) {
+      func = ref2[l];
+      results.push(func.apply(null, args));
+    }
+    return results;
+  };
+
+  p.generatePtsCircle = function(count, centerPt) {
+    var angle, angleStep, circumference, i, l, legLength, ref1, results;
+    circumference = this['circleFootSeparation'] * (2 + count);
+    legLength = circumference / twoPi;
+    angleStep = twoPi / count;
+    results = [];
+    for (i = l = 0, ref1 = count; 0 <= ref1 ? l < ref1 : l > ref1; i = 0 <= ref1 ? ++l : --l) {
+      angle = this['circleStartAngle'] + i * angleStep;
+      results.push(new gm.Point(centerPt.x + legLength * Math.cos(angle), centerPt.y + legLength * Math.sin(angle)));
+    }
+    return results;
+  };
+
+  p.generatePtsSpiral = function(count, centerPt) {
+    var angle, i, l, legLength, pt, ref1, results;
+    legLength = this['spiralLengthStart'];
+    angle = 0;
+    results = [];
+    for (i = l = 0, ref1 = count; 0 <= ref1 ? l < ref1 : l > ref1; i = 0 <= ref1 ? ++l : --l) {
+      angle += this['spiralFootSeparation'] / legLength + i * 0.0005;
+      pt = new gm.Point(centerPt.x + legLength * Math.cos(angle), centerPt.y + legLength * Math.sin(angle));
+      legLength += twoPi * this['spiralLengthFactor'] / angle;
+      results.push(pt);
+    }
+    return results;
+  };
+
+  p.spiderListener = function(marker, event) {
+    var $this, clear, l, len1, m, mPt, markerPt, markerSpiderfied, nDist, nearbyMarkerData, nonNearbyMarkers, pxSq, ref1;
+    markerSpiderfied = marker['_omsData'] != null;
+    if (!(markerSpiderfied && this['keepSpiderfied'])) {
+      if (this['event'] === 'mouseover') {
+        $this = this;
+        clear = function() {
+          return $this['unspiderfy']();
+        };
+        window.clearTimeout(p.timeout);
+        p.timeout = setTimeout(clear, 3000);
+      } else {
+        this['unspiderfy']();
+      }
+    }
+    if (markerSpiderfied || this.map.getStreetView().getVisible() || this.map.getMapTypeId() === 'GoogleEarthAPI') {
+      return this.trigger('click', marker, event);
+    } else {
+      nearbyMarkerData = [];
+      nonNearbyMarkers = [];
+      nDist = this['nearbyDistance'];
+      pxSq = nDist * nDist;
+      markerPt = this.llToPt(marker.position);
+      ref1 = this.markers;
+      for (l = 0, len1 = ref1.length; l < len1; l++) {
+        m = ref1[l];
+        if (!((m.map != null) && m.getVisible())) {
+          continue;
+        }
+        mPt = this.llToPt(m.position);
+        if (this.ptDistanceSq(mPt, markerPt) < pxSq) {
+          nearbyMarkerData.push({
+            marker: m,
+            markerPt: mPt
+          });
+        } else {
+          nonNearbyMarkers.push(m);
+        }
+      }
+      if (nearbyMarkerData.length === 1) {
+        return this.trigger('click', marker, event);
+      } else {
+        return this.spiderfy(nearbyMarkerData, nonNearbyMarkers);
+      }
+    }
+  };
+
+  p['markersNearMarker'] = function(marker, firstOnly) {
+    var l, len1, m, mPt, markerPt, markers, nDist, pxSq, ref1, ref2, ref3;
+    if (firstOnly == null) {
+      firstOnly = false;
+    }
+    if (this.projHelper.getProjection() == null) {
+      throw "Must wait for 'idle' event on map before calling markersNearMarker";
+    }
+    nDist = this['nearbyDistance'];
+    pxSq = nDist * nDist;
+    markerPt = this.llToPt(marker.position);
+    markers = [];
+    ref1 = this.markers;
+    for (l = 0, len1 = ref1.length; l < len1; l++) {
+      m = ref1[l];
+      if (m === marker || (m.map == null) || !m.getVisible()) {
+        continue;
+      }
+      mPt = this.llToPt((ref2 = (ref3 = m['_omsData']) != null ? ref3.usualPosition : void 0) != null ? ref2 : m.position);
+      if (this.ptDistanceSq(mPt, markerPt) < pxSq) {
+        markers.push(m);
+        if (firstOnly) {
+          break;
+        }
+      }
+    }
+    return markers;
+  };
+
+  p['markersNearAnyOtherMarker'] = function() {
+    var i, i1, i2, l, len1, len2, len3, m, m1, m1Data, m2, m2Data, mData, n, nDist, pxSq, q, ref1, ref2, ref3, results;
+    if (this.projHelper.getProjection() == null) {
+      throw "Must wait for 'idle' event on map before calling markersNearAnyOtherMarker";
+    }
+    nDist = this['nearbyDistance'];
+    pxSq = nDist * nDist;
+    mData = (function() {
+      var l, len1, ref1, ref2, ref3, results;
+      ref1 = this.markers;
+      results = [];
+      for (l = 0, len1 = ref1.length; l < len1; l++) {
+        m = ref1[l];
+        results.push({
+          pt: this.llToPt((ref2 = (ref3 = m['_omsData']) != null ? ref3.usualPosition : void 0) != null ? ref2 : m.position),
+          willSpiderfy: false
+        });
+      }
+      return results;
+    }).call(this);
+    ref1 = this.markers;
+    for (i1 = l = 0, len1 = ref1.length; l < len1; i1 = ++l) {
+      m1 = ref1[i1];
+      if (!((m1.map != null) && m1.getVisible())) {
+        continue;
+      }
+      m1Data = mData[i1];
+      if (m1Data.willSpiderfy) {
+        continue;
+      }
+      ref2 = this.markers;
+      for (i2 = n = 0, len2 = ref2.length; n < len2; i2 = ++n) {
+        m2 = ref2[i2];
+        if (i2 === i1) {
+          continue;
+        }
+        if (!((m2.map != null) && m2.getVisible())) {
+          continue;
+        }
+        m2Data = mData[i2];
+        if (i2 < i1 && !m2Data.willSpiderfy) {
+          continue;
+        }
+        if (this.ptDistanceSq(m1Data.pt, m2Data.pt) < pxSq) {
+          m1Data.willSpiderfy = m2Data.willSpiderfy = true;
+          break;
+        }
+      }
+    }
+    ref3 = this.markers;
+    results = [];
+    for (i = q = 0, len3 = ref3.length; q < len3; i = ++q) {
+      m = ref3[i];
+      if (mData[i].willSpiderfy) {
+        results.push(m);
+      }
+    }
+    return results;
+  };
+
+  p.makeHighlightListenerFuncs = function(marker) {
+    return {
+      highlight: (function(_this) {
+        return function() {
+          return marker['_omsData'].leg.setOptions({
+            strokeColor: _this['legColors']['highlighted'][_this.map.mapTypeId],
+            zIndex: _this['highlightedLegZIndex']
+          });
+        };
+      })(this),
+      unhighlight: (function(_this) {
+        return function() {
+          return marker['_omsData'].leg.setOptions({
+            strokeColor: _this['legColors']['usual'][_this.map.mapTypeId],
+            zIndex: _this['usualLegZIndex']
+          });
+        };
+      })(this)
+    };
+  };
+
+  p.spiderfy = function(markerData, nonNearbyMarkers) {
+    var bodyPt, footLl, footPt, footPts, highlightListenerFuncs, leg, marker, md, nearestMarkerDatum, numFeet, spiderfiedMarkers;
+    if (this['minZoomLevel'] && this.map.getZoom() < this['minZoomLevel']) {
+      return false;
+    }
+    this.spiderfying = true;
+    numFeet = markerData.length;
+    bodyPt = this.ptAverage((function() {
+      var l, len1, results;
+      results = [];
+      for (l = 0, len1 = markerData.length; l < len1; l++) {
+        md = markerData[l];
+        results.push(md.markerPt);
+      }
+      return results;
+    })());
+    footPts = numFeet >= this['circleSpiralSwitchover'] ? this.generatePtsSpiral(numFeet, bodyPt).reverse() : this.generatePtsCircle(numFeet, bodyPt);
+    spiderfiedMarkers = (function() {
+      var l, len1, results;
+      results = [];
+      for (l = 0, len1 = footPts.length; l < len1; l++) {
+        footPt = footPts[l];
+        footLl = this.ptToLl(footPt);
+        nearestMarkerDatum = this.minExtract(markerData, (function(_this) {
+          return function(md) {
+            return _this.ptDistanceSq(md.markerPt, footPt);
+          };
+        })(this));
+        marker = nearestMarkerDatum.marker;
+        leg = new gm.Polyline({
+          map: this.map,
+          path: [marker.position, footLl],
+          strokeColor: this['legColors']['usual'][this.map.mapTypeId],
+          strokeWeight: this['legWeight'],
+          zIndex: this['usualLegZIndex']
+        });
+        marker['_omsData'] = {
+          usualPosition: marker.position,
+          leg: leg
+        };
+        if (this['legColors']['highlighted'][this.map.mapTypeId] !== this['legColors']['usual'][this.map.mapTypeId]) {
+          highlightListenerFuncs = this.makeHighlightListenerFuncs(marker);
+          marker['_omsData'].hightlightListeners = {
+            highlight: ge.addListener(marker, 'mouseover', highlightListenerFuncs.highlight),
+            unhighlight: ge.addListener(marker, 'mouseout', highlightListenerFuncs.unhighlight)
+          };
+        }
+        marker.setPosition(footLl);
+        marker.setZIndex(Math.round(this['spiderfiedZIndex'] + footPt.y));
+        results.push(marker);
+      }
+      return results;
+    }).call(this);
+    delete this.spiderfying;
+    this.spiderfied = true;
+    return this.trigger('spiderfy', spiderfiedMarkers, nonNearbyMarkers);
+  };
+
+  p['unspiderfy'] = function(markerNotToMove) {
+    var l, len1, listeners, marker, nonNearbyMarkers, ref1, unspiderfiedMarkers;
+    if (markerNotToMove == null) {
+      markerNotToMove = null;
+    }
+    if (this.spiderfied == null) {
+      return this;
+    }
+    this.unspiderfying = true;
+    unspiderfiedMarkers = [];
+    nonNearbyMarkers = [];
+    ref1 = this.markers;
+    for (l = 0, len1 = ref1.length; l < len1; l++) {
+      marker = ref1[l];
+      if (marker['_omsData'] != null) {
+        marker['_omsData'].leg.setMap(null);
+        if (marker !== markerNotToMove) {
+          marker.setPosition(marker['_omsData'].usualPosition);
+        }
+        marker.setZIndex(null);
+        listeners = marker['_omsData'].hightlightListeners;
+        if (listeners != null) {
+          ge.removeListener(listeners.highlight);
+          ge.removeListener(listeners.unhighlight);
+        }
+        delete marker['_omsData'];
+        unspiderfiedMarkers.push(marker);
+      } else {
+        nonNearbyMarkers.push(marker);
+      }
+    }
+    delete this.unspiderfying;
+    delete this.spiderfied;
+    this.trigger('unspiderfy', unspiderfiedMarkers, nonNearbyMarkers);
+    return this;
+  };
+
+  p.ptDistanceSq = function(pt1, pt2) {
+    var dx, dy;
+    dx = pt1.x - pt2.x;
+    dy = pt1.y - pt2.y;
+    return dx * dx + dy * dy;
+  };
+
+  p.ptAverage = function(pts) {
+    var l, len1, numPts, pt, sumX, sumY;
+    sumX = sumY = 0;
+    for (l = 0, len1 = pts.length; l < len1; l++) {
+      pt = pts[l];
+      sumX += pt.x;
+      sumY += pt.y;
+    }
+    numPts = pts.length;
+    return new gm.Point(sumX / numPts, sumY / numPts);
+  };
+
+  p.llToPt = function(ll) {
+    return this.projHelper.getProjection().fromLatLngToDivPixel(ll);
+  };
+
+  p.ptToLl = function(pt) {
+    return this.projHelper.getProjection().fromDivPixelToLatLng(pt);
+  };
+
+  p.minExtract = function(set, func) {
+    var bestIndex, bestVal, index, item, l, len1, val;
+    for (index = l = 0, len1 = set.length; l < len1; index = ++l) {
+      item = set[index];
+      val = func(item);
+      if ((typeof bestIndex === "undefined" || bestIndex === null) || val < bestVal) {
+        bestVal = val;
+        bestIndex = index;
+      }
+    }
+    return set.splice(bestIndex, 1)[0];
+  };
+
+  p.arrIndexOf = function(arr, obj) {
+    var i, l, len1, o;
+    if (arr.indexOf != null) {
+      return arr.indexOf(obj);
+    }
+    for (i = l = 0, len1 = arr.length; l < len1; i = ++l) {
+      o = arr[i];
+      if (o === obj) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
+  return _Class;
+
+})();
+
+  }.apply(self);
+
+  GoogleMapApi.then(function(){
+    self.OverlappingMarkerSpiderfier.initializeGoogleMaps(window.google);
+  });
+  return this.OverlappingMarkerSpiderfier;
+}]);
+;/**
  * Performance overrides on MarkerClusterer custom to Angular Google Maps
  *
  * Created by Petr Bruna ccg1415 and Nick McCready on 7/13/14.
  */
 angular.module('uiGmapgoogle-maps.extensions')
-.service('uiGmapExtendMarkerClusterer',['uiGmapLodash', function (uiGmapLodash) {
+.service('uiGmapExtendMarkerClusterer',['uiGmapLodash', 'uiGmapPropMap', function (uiGmapLodash, PropMap) {
   return {
     init: _.once(function () {
       (function () {
@@ -13205,7 +15326,7 @@ angular.module('uiGmapgoogle-maps.extensions')
 
           function NgMapCluster(opts) {
             NgMapCluster.__super__.constructor.call(this, opts);
-            this.markers_ = new window.PropMap();
+            this.markers_ = new PropMap();
           }
 
           /**
@@ -13315,7 +15436,7 @@ angular.module('uiGmapgoogle-maps.extensions')
 
           function NgMapMarkerClusterer(map, opt_markers, opt_options) {
             NgMapMarkerClusterer.__super__.constructor.call(this, map, opt_markers, opt_options);
-            this.markers_ = new window.PropMap();
+            this.markers_ = new PropMap();
           }
 
           /**
@@ -13501,30 +15622,59 @@ angular.module('uiGmapgoogle-maps.extensions')
               return this;
             }).apply(obj1, [obj2]);
           };
-
-          NgMapMarkerClusterer.prototype.onAdd = function() {
-            var cMarkerClusterer = this;
-
-            this.activeMap_ = this.getMap();
-            this.ready_ = true;
-
-            this.repaint();
-
-            // Add the map event listeners
-            this.listeners_ = [
-                google.maps.event.addListener(this.getMap(), 'zoom_changed', function () {
-                    cMarkerClusterer.resetViewport_(false);
-                    // Workaround for this Google bug: when map is at level 0 and '-' of
-                    // zoom slider is clicked, a 'zoom_changed' event is fired even though
-                    // the map doesn't zoom out any further. In this situation, no 'idle'
-                    // event is triggered so the cluster markers that have been removed
-                    // do not get redrawn. Same goes for a zoom in at maxZoom.
-                    if (this.getZoom() === (this.get('minZoom') || 0) || this.getZoom() === this.get('maxZoom')) {
-                        google.maps.event.trigger(this, 'idle');
-                    }
-                })
-            ];
+          ////////////////////////////////////////////////////////////////////////////////
+          /*
+          Other overrides relevant to MarkerClusterPlus
+          */
+          ////////////////////////////////////////////////////////////////////////////////
+          /**
+          * Positions and shows the icon.
+          */
+          ClusterIcon.prototype.show = function () {
+            if (this.div_) {
+              var img = "";
+              // NOTE: values must be specified in px units
+              var bp = this.backgroundPosition_.split(" ");
+              var spriteH = parseInt(bp[0].trim(), 10);
+              var spriteV = parseInt(bp[1].trim(), 10);
+              var pos = this.getPosFromLatLng_(this.center_);
+              this.div_.style.cssText = this.createCss(pos);
+              img = "<img src='" + this.url_ + "' style='position: absolute; top: " + spriteV + "px; left: " + spriteH + "px; ";
+              if (!this.cluster_.getMarkerClusterer().enableRetinaIcons_) {
+                img += "clip: rect(" + (-1 * spriteV) + "px, " + ((-1 * spriteH) + this.width_) + "px, " +
+                ((-1 * spriteV) + this.height_) + "px, " + (-1 * spriteH) + "px);";
+              }
+              // ADDED FOR RETINA SUPPORT
+              else {
+                img += "width: " + this.width_ + "px;" + "height: " + this.height_ + "px;";
+              }
+              // END ADD
+              img += "'>";
+              this.div_.innerHTML = img + "<div style='" +
+              "position: absolute;" +
+              "top: " + this.anchorText_[0] + "px;" +
+              "left: " + this.anchorText_[1] + "px;" +
+              "color: " + this.textColor_ + ";" +
+              "font-size: " + this.textSize_ + "px;" +
+              "font-family: " + this.fontFamily_ + ";" +
+              "font-weight: " + this.fontWeight_ + ";" +
+              "font-style: " + this.fontStyle_ + ";" +
+              "text-decoration: " + this.textDecoration_ + ";" +
+              "text-align: center;" +
+              "width: " + this.width_ + "px;" +
+              "line-height:" + this.height_ + "px;" +
+              "'>" + this.sums_.text + "</div>";
+              if (typeof this.sums_.title === "undefined" || this.sums_.title === "") {
+                this.div_.title = this.cluster_.getMarkerClusterer().getTitle();
+              } else {
+                this.div_.title = this.sums_.title;
+              }
+              this.div_.style.display = "";
+            }
+            this.visible_ = true;
           };
+          //END OTHER OVERRIDES
+          ////////////////////////////////////////////////////////////////////////////////
 
           return NgMapMarkerClusterer;
 

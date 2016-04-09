@@ -32,8 +32,6 @@ router.use(function(req, res, next) {
             }
             client.query('SELECT account_id from account where remember_me_token = $1', [token], function(err, result) {
                 done();
-
-                console.log("result:", result)
                 if (err) {                	
                     console.log(query, err);
                     return res.status(404).json({
@@ -45,7 +43,7 @@ router.use(function(req, res, next) {
                 	console.log("error:", result.rows.length);
                     //console.log(query, result.rows.length);
                 	res.writeHead(301,
-  						{Location: '/xxxsign-in'}
+  						{Location: '/sign-in'}
 					);
 	                res.end();
                     // return res.status(403).json({
