@@ -50,10 +50,15 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    self.view.backgroundColor = [WelcomeController colorFromRGB:0xAD2A01 alpha:1];  //
+    
+    // Jefferson Blue
+    self.view.backgroundColor = [WelcomeController colorFromRGB:0x0D1135 alpha:1];
+    
+    // Lavahound Red
+    //self.view.backgroundColor = [WelcomeController colorFromRGB:0xAD2A01 alpha:1];  //
     
     UIImageView *backgroundImageView = [[[UIImageView alloc] initWithImage:TTIMAGE(@"bundle://signInOrUpBG.png")] autorelease];    
-    backgroundImageView.frame = CGRectMake(0, 0, 320, 460);
+    backgroundImageView.frame = CGRectMake(0, 0, 320, 568);
     [self.view addSubview:backgroundImageView];
     
     UIImage *signInButtonImage = TTIMAGE(@"bundle://buttonSignIn.png");

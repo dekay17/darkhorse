@@ -49,11 +49,14 @@ static NSTimeInterval const kKeyboardAnimationDuration = 0.3;
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    self.view.backgroundColor = [SignInController colorFromRGB:0xAD2A01 alpha:1];  //
+    // Jefferson Blue
+    self.view.backgroundColor = [SignInController colorFromRGB:0x0D1135 alpha:1];
+// Lavahound Red
+//    self.view.backgroundColor = [SignInController colorFromRGB:0xAD2A01 alpha:1];  //
 
     
     UIImageView *backgroundImageView = [[[UIImageView alloc] initWithImage:TTIMAGE(@"bundle://signInBG.png")] autorelease];    
-    backgroundImageView.frame = CGRectMake(0, 0, 320, 460);
+    backgroundImageView.frame = CGRectMake(0, 0, 320, 568);
     [self.view addSubview:backgroundImageView];
     
     _emailAddressTextField = [[UITextField alloc] initWithFrame:CGRectMake(14, 211, 300, 30)];

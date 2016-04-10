@@ -2905,6 +2905,7 @@
 					"\"$(SRCROOT)\"",
 					"\"$(SRCROOT)/../../../../../../Library/Developer/Xcode/DerivedData/Lavahound-eawybzujdhvlfqclxcfqtubcmjjf/Build/Products/Debug-iphonesimulator\"",
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.lavahound.jefferson;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "Lavahound/Classes/API/Lavahound-Bridging-Header.h";
@@ -2994,6 +2995,7 @@
 					"\"$(SRCROOT)\"",
 					"\"$(SRCROOT)/../../../../../../Library/Developer/Xcode/DerivedData/Lavahound-eawybzujdhvlfqclxcfqtubcmjjf/Build/Products/Debug-iphonesimulator\"",
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.lavahound.jefferson;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
@@ -3036,6 +3038,7 @@
 					"\"$(SRCROOT)\"",
 					"\"$(SRCROOT)/../../../../../../Library/Developer/Xcode/DerivedData/Lavahound-eawybzujdhvlfqclxcfqtubcmjjf/Build/Products/Debug-iphonesimulator\"",
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.lavahound.jefferson;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";

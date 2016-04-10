@@ -155,6 +155,54 @@ router.get('/place/:place_id', function(req, res, next) {
 	});
 });
 
+router.get('/hunt/:hunt_id', function(req, res, next) {
+    pg.connect(connectionString, function(err, client, done) {
+        var jsonResults = {};
+        jsonResults.hunt = {};
+        jsonResults.photos = [];
+    
+        var photoQuery = function(callback){
+            client.query("select p.* from hunt_photo hp, photo p where hp.hunt_id = $1 and hp.photo_id = p.photo_id", [req.params.hunt_id]).on('row', function(row) {
+                row.image_url = cloudfront_base + row.image_file_name;
+                jsonResults.photos.push(row);
+            }).on('end', function(result) {
+                done();
+                if (err)
+                    return callback(err);
+                console.log("completed photoQuery");
+                callback(null, result);
+            });
+        }
+
+
+        // SQL Query > Select Data
+        var huntQuery = function(callback) {
+            client.query("select p.place_id, p.name, p.description, p.image_file_name, p.latitude, p.longitude " +        
+                    "from place p where p.place_id = " + req.params.hunt_id,
+                function(err, result) {
+                    done();
+                    if (err)
+                        return callback(err);
+                    console.log("completed huntQuery");
+                    jsonResults.hunt = result.rows[0];
+                    callback(null, result);
+                });
+        }
+    
+        async.parallel([
+            photoQuery,
+            huntQuery
+        ], function(err, results) {
+            if (err)
+                return res.status(400).json({
+                    "error_message": "error loading data", 
+                    "error_description": err
+                });
+            return res.json(jsonResults);
+        }); 
+    });
+});
+
 router.post('/sign-out', function(req, res) {
 
 });
