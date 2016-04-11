@@ -1,2 +1,3 @@
 /* global window */
-window.lavahound.app = angular.module("lavahoundApp", [ 'ngCookies', 'ngRoute', 'ui.bootstrap', 'ngTable', 'ngSanitize', 'ngCsv', 'ngAnimate']);
+//'ui.bootstrap', 
+// window.lavahound.app = angular.module("lavahoundApp", [ 'ngCookies', 'ngRoute', 'ngTable', 'ngSanitize', 'ngAnimate', 'uiGmapgoogle-maps']);

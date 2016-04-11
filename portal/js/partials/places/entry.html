@@ -1,0 +1,45 @@
+<div class="modal-header account-header">
+	<div class="pull-left">
+		<div class="controls">
+			<input type="text" class="form-control" style="font-size: x-large !important;" id="name" ng-model="entry.title" placeholder="Title" ng-disabled="enabled"/>
+		</div>
+	</div>
+	<div class="pull-right clearfix" id="photo-selector">
+		<div id="photo-display">
+			<img class="photo" ng-src="{{entry.image_url}}" />
+		</div>
+	</div>
+</div>
+<div class="modal-body">
+	<div class="alert alert-danger" role="alert"  ng-show="formError">{{errorMsg}}</div>
+	<form novalidate class="form-horizontal css-form" name="form">
+
+	<div>Select an image file: <input type="file" id="fileInput" /></div>
+  	<div class="cropArea pull-left">
+  		<img-crop
+   			image="myImage"
+   			result-image="myCroppedImage" area-type="square"></img-crop>
+  	</div>
+  	<div class="pull-right" style><img class="originalArea" ng-src="{{myCroppedImage}}" /></div>
+		<div class="control-group">
+			<label class="control-label" for="description">Description</label>
+			<div class="controls">
+				<input class="form-control" type="text" id="description" placeholder="Description" ng-model="entry.description" ng-disabled="enabled" required>
+			</div>
+		</div>
+		<div class="control-group">
+			<p>&nbsp;</p>
+			<div class="checkbox">
+        		<label>
+          			<input type="checkbox" ng-disabled="enabled" ng-model="account.active"> Active
+        		</label>
+      		</div>
+		</div>	
+	</form>
+</div>
+<div class="modal-footer">
+	<button class="btn btn-danger pull-left" ng-show="!newAccount" ng-click="resetCredentials()">Reset Credentials</button>
+	
+	<button class="btn btn-primary" ng-click="edit()">{{ editSaveLabel }}</button>
+	<button class="btn btn-warning" ng-click="cancel()">Cancel</button>
+</div>

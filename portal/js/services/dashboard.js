@@ -39,6 +39,17 @@ window.lavahound.app.service("dashboardService", function($http, $q, $timeout, n
 		});
 	};	
 	
+	this.findHuntDetails = function(options) {
+		options = options || {};
+		var params = options.params || {};
+
+		return networkService.makeCall({
+			method : "GET",
+			url : "/api/hunt/" + params.hunt_id,
+			params : params
+		});
+	};	
+
 	this.loadSegmentData = function(params) {
 
 		var postData = {

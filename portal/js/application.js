@@ -32,22 +32,24 @@
     	}
     };
 
+        // "ui.bootstrap",
+
     window.lavahound.app = angular.module("lavahoundApp", [
-        "ui.bootstrap",
         "ngCookies",
         "ngRoute",
         "nvd3",
         "ngTable",
-        "uiGmapgoogle-maps",
-        'ngSanitize', 'ngCsv', 'ngAnimate'
-    ]).config(function(uiGmapGoogleMapApiProvider) {
+        'uiGmapgoogle-maps',
+        'ngFileUpload', 
+        'ngImgCrop',
+        'ngSanitize', 'ngAnimate'
+    ]).config(['uiGmapGoogleMapApiProvider', function(uiGmapGoogleMapApiProvider) {
         uiGmapGoogleMapApiProvider.configure({
-        	key: 'AIzaSyBMdkHOPs_501svWyksID8fs6gNykPb3Qs',
-            v: '3.20',
+            key: 'AIzaSyBMdkHOPs_501svWyksID8fs6gNykPb3Qs',
+            v: '3.20', //defaults to latest 3.X anyhow
             libraries: 'weather,geometry,visualization'
         });
-    });
-    
+    }]);    
 
     window.lavahound.isDefined = function (value) {
         return value !== null && angular.isDefined(value);

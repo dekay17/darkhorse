@@ -77,6 +77,11 @@ router.get('/home', function(req, res, next) {
     res.send(fileContents.toString());
 });
 
+router.get('/crop', function(req, res, next) {
+    var fileContents = fs.readFileSync("crop.html");
+    res.send(fileContents.toString());
+});
+
 router.get('/sign-in', function(req, res, next) {
     // res.render('sign-in', {layout: false});
     var fileContents = fs.readFileSync("views/sign-in.html");

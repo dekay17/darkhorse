@@ -1,6 +1,7 @@
 (function() {
 	"use strict";
 
+
 	lavahound.app.config([ '$routeProvider', function($routeProvider) {
 		$routeProvider.when('/home', {
 			templateUrl : '/js/partials/index.html',
@@ -14,6 +15,12 @@
 		}).when('/hunt/:huntId', {
 			templateUrl : '/js/partials/places/hunt.html',
 			controller : 'DashboardHuntController'	
+		}).when('/photo/new', {
+			templateUrl : '/js/partials/places/entry.html',
+			controller : 'EditEntryController'				
+		}).when('/timeline', {
+			templateUrl : '/js/partials/timeline.html',
+			controller : 'DashboardTimelineController'
 		}).when('/account/:programId', {
 			templateUrl : '/js/partials/dashboard/program/dhi.html',
 			controller : 'DashboardController'
@@ -98,15 +105,131 @@
 		findPlaceDetails();
 	});	
 
-	lavahound.app.controller("DashboardHuntController", function($scope, $timeout, $http, $q, $log, $routeParams, $location, dashboardService, accountService, uiGmapGoogleMapApi) {
-		uiGmapGoogleMapApi.then(function(maps) {
-
-    	});
-
-	});	
-
+	// lavahound.app.controller("DashboardHuntController", function($scope, $timeout, $http, $q, $log, $routeParams, $location, dashboardService, accountService, uiGmapGoogleMapApi) {
 	
+	// });
+//"$modal",$modal,
+
+	lavahound.app.controller("DashboardHuntController", [ "$scope", "$http", "$q", "$log", "$filter", "$routeParams", "$location", "uiGmapGoogleMapApi", "dashboardService",
+			"accountService", "ngTableParams", "uiGmapIsReady",
+			function($scope, $http, $q, $log, $filter, $routeParams, $location, uiGmapGoogleMapApi, dashboardService, accountService, NgTableParams, uiGmapIsReady) {
+			
+			$scope.map = {center: {latitude: 51.219053, longitude: 4.404418 }, zoom: 14 };
+        	$scope.options = {scrollwheel: false};
+			// $scope.map.options = {draggable:true};
+
+			function updateMap(){
+				if (angular.isDefined(window.google) && angular.isDefined(window.google.maps)) {
+					var bounds = new google.maps.LatLngBounds();
+					angular.forEach($scope.photos, function(latLng) {
+						if (latLng.latitude === 0 && latLng.longitude === 0){
+							$scope.unknownViews++;
+						}else{
+							var myLatLng = new google.maps.LatLng(latLng.latitude, latLng.longitude);
+							var marker = new google.maps.Marker({
+							    position: myLatLng,
+							    map: $scope.mapInstance.map,
+							    title: latLng.description,
+							    draggable:true,
+							    photo_id: latLng.photo_id
+							});		
+							google.maps.event.addListener(marker, 'dragend', function() 
+							{
+							    console.log("dragged to", marker.position);
+							});
+							marker.addListener('click', function() {
+								console.log("clicked", marker);
+							});
+
+							bounds.extend(myLatLng);
+						}
+					});
+					$scope.mapInstance.map.fitBounds(bounds);
+
+
+					// $scope.map.sessionMarkers = $scope.photos;
+				}
+			}
+
+			uiGmapIsReady.promise().then(function(instances) {
+		        instances.forEach(function(inst) {
+					$scope.mapInstance = inst;
+					findHuntDetails();
+				});
+		        console.log("is ready");
+		    });
+
+			$scope.addNewEntry = function() {
+				$location.path( "/photo/new" );
+
+				// var modalInstance = $modal.open({
+				// 	templateUrl : '/js/partials/places/entry.html',
+				// 	controller : 'EditEntryController',
+				// 	size : 'lg',
+				// 	resolve : {
+				// 		entry : function() {
+				// 			return {};
+				// 		},
+				// 		enabled : function() {
+				// 			return true;
+				// 		}
+				// 	}
+				// });
+
+				// modalInstance.result.then(function(success) {
+
+				// }, function() {
+				// 	$log.info('Modal dismissed at: ' + new Date());
+				// });
+
+				// return modalInstance;
+			};
+
+			function findHuntDetails() {
+				var options = {
+					params : {
+						companyId : 1,
+						hunt_id : $routeParams.huntId
+					}
+				};
+
+				dashboardService.findHuntDetails(options).promise.then(function(response) {
+					$scope.hunt = response.data.hunt;			
+					$scope.photos = response.data.photos;	
+					updateMap();
+					console.log(response);
+				});
+			}
+
+	}]);	
+
+	lavahound.app.controller("EditEntryController", function($scope, $timeout, $http, $q, $log, $routeParams, $location, dashboardService, accountService) {
 	
+		$scope.editSaveLabel = "Edit";
+
+	    $scope.myImage='';
+	    $scope.myCroppedImage='';
+
+
+		console.log("EditEntryController");
+	    var handleFileSelect=function(evt) {
+	      var file=evt.currentTarget.files[0];
+	      var reader = new FileReader();
+	      reader.onload = function (evt) {
+	        $scope.$apply(function($scope){
+	          $scope.myImage=evt.target.result;
+	        });
+	      };
+	      reader.readAsDataURL(file);
+	    };
+	    angular.element(document.querySelector('#fileInput')).on('change',handleFileSelect);
+
+		// $timeout(function() {
+  //           console.log(document.querySelector('#fileInput'));
+			// angular.element(document.querySelector('#fileInput')).on('change',handleFileSelect);
+    	// }, 1000);
+		
+	});
 	
 	// ***** -------------------- CRAP BELOW HERE ------------------
 	

@@ -112,8 +112,10 @@ window.lavahound.app.service("accountService", function($http, $cookies, network
 		console.log("Signing in...", options);
 
 		signedInUser = angular.copy(options);
-		$cookies[SIGNED_IN_USER_COOKIE_NAME] = signedInUser.name;
-		$cookies[SIGNED_IN_USER_APITOKEN] = signedInUser.api_token;
+		$cookies.put(SIGNED_IN_USER_APITOKEN, signedInUser.api_token);
+		$cookies.put(SIGNED_IN_USER_COOKIE_NAME, signedInUser.name);
+		// $cookies[SIGNED_IN_USER_COOKIE_NAME] = signedInUser.name;
+		// $cookies[SIGNED_IN_USER_APITOKEN] = signedInUser.api_token;
 		writeToLocalStorage(SIGNED_IN_USER_APITOKEN, signedInUser.api_token);
 	};
 

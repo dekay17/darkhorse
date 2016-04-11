@@ -1,2 +1,46 @@
-hunt
-<ui-gmap-google-map center='map.center' zoom='map.zoom'></ui-gmap-google-map>
+	<div class="row">
+	    <div class="col-xs-12">
+	    	<div class="panel panel-default">
+		    	<div class="panel-heading"><h3>{{ hunt.name }}</h3></div>
+	            <div class="panel-body">
+				    {{ hunt.description }}
+				    <div class="map"> 		
+	    				<ui-gmap-google-map center='map.center' zoom='map.zoom'></ui-gmap-google-map>
+	    			</div>
+					<div class="">
+						<button type="button" class="btn btn-primary" ng-click="addNewEntry()"> Add Photo </button>
+					</row>	    			
+				</div>				
+			</div>
+	    </div>
+	</div>
+	<div class="row" ng-repeat="photo in photos">
+	    <div class="col-xs-12">
+	        <div class="panel panel-default">
+	            <div class="panel-heading" style="height: 60px">
+	            	<div class="pull-left">
+	            		<h4>{{ photo.title }}</h4>
+	            	</div>
+					<div class="pull-right">
+						<button type="button" class="btn btn-primary" ng-click="viewHunt(hunt)"> Edit </button>
+					</div>
+	            </div>
+	            <div class="panel-body">
+	            	<div class="row">
+	            		<div class="col-md-2"><img class="thumbnail img-responsive" alt="{{ hunt.name }}" src="{{ photo.image_url }}" /></div>
+						<div class="col-md-10">
+							<div class="entry-description">
+								{{ photo.description }}
+							</div>
+							<div class="entry-found" style="padding-top: 10px;">
+								Found: {{ photo.found_msg }}
+							</div>
+							<div class="entry-points" style="padding-top: 10px;">
+								Points: {{ photo.points }}
+							</div>
+						</div>
+					</div>
+	            </div>
+	       	</div>
+		</div>
+	</div>
