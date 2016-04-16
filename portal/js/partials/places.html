@@ -1,11 +1,16 @@
-<div class="text-center">
-    <h1>Places</h1>
+<div class="row">
+    <div class="pull-left text-left">
+        <h1>Places</h1>
+    </div>
+    <div class="pull-right">
+        <button type="button" ng-click="addPlace()" class="btn btn-primary">Add Place</button>
+    </div>    
 </div>
 <div class="row">
     <div class="col-md-4" ng-repeat="place in places">
         <div class="well">
             <a ng-href="/home#/places/{{ place.place_id}}">
-            	<img class="thumbnail img-responsive" alt="{{ place.name }}" src="{{ place.image_url }}" />
+            	<img class="thumbnail img-responsive" alt="{{ place.name }}" ng-src="{{ place.image_url }}" />
             </a>
             <span>
             	<h3>{{ place.name }} </h3>

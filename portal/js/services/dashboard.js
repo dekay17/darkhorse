@@ -38,6 +38,32 @@ window.lavahound.app.service("dashboardService", function($http, $q, $timeout, n
 			params : params
 		});
 	};	
+
+	this.savePlace = function(options) {
+		options = options || {};
+		var params = options.params || {};
+		var url = "/api/place/";
+		if (options.place_id){
+			url += options.place_id
+		}
+
+		return networkService.makeCall({
+			method : "POST",
+			url : url,
+			data : params
+		});
+	};		
+
+	this.findEventTimeline = function(options) {
+		options = options || {};
+		var params = options.params || {};
+
+		return networkService.makeCall({
+			method : "GET",
+			url : "/api/timeline",
+			params : params
+		});
+	};	
 	
 	this.findHuntDetails = function(options) {
 		options = options || {};

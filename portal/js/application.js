@@ -42,7 +42,7 @@
         'uiGmapgoogle-maps',
         'ngFileUpload', 
         'ngImgCrop',
-        'ngSanitize', 'ngAnimate'
+        'ngSanitize', 'ngAnimate', 'ui.bootstrap'
     ]).config(['uiGmapGoogleMapApiProvider', function(uiGmapGoogleMapApiProvider) {
         uiGmapGoogleMapApiProvider.configure({
             key: 'AIzaSyBMdkHOPs_501svWyksID8fs6gNykPb3Qs',

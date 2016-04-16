@@ -1,4 +1,5 @@
 var async = require('async');
+var fs = require('fs');
 
 var express = require('express');
 var router = express.Router();
@@ -9,9 +10,18 @@ var sha1 = require('sha1');
 pg.defaults.poolSize = 20;
 
 var connectionString = process.env.DATABASE_URL || 'postgres://lavahound:h0und@localhost:5432/lavahound';
+//var connectionString = process.env.DATABASE_URL || 'postgres://lavahound:lavahound@107.21.239.118:5432/lavahound';
+
+
 
 var cloudfront_base = "https://s3.amazonaws.com/lavahound-hunts/";
 var user_icon_base = "https://s3.amazonaws.com/user-icons/";
+
+var AWS = require('aws-sdk');
+AWS.config.region = 'us-east-1';
+
+AWS.config.accessKeyId = 'AKIAIFYVEREBTRW5R55A';
+AWS.config.secretAccessKey = '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';
 
 var publicUrls = ["/sign-in", "/sign-up", "/terms-and-conditions", "/privacy-policy"]
 
@@ -106,6 +116,44 @@ router.get('/places', function(req, res, next) {
     });
 });
 
+router.post('/place/', function(req, res, next) {
+    console.log("add place", req.body);
+
+    var place = req.body.place;
+    pg.connect(connectionString, function(err, client, done) {
+        client.query(
+            "insert into place(place_id, image_file_name, name, description, latitude, longitude) " +
+            "values(nextval('place_id_seq'),$1,$2,$3,0, 0) RETURNING place_id;",[place.name, place.image_file_name, place.description], 
+            function(err, result) {
+
+                if (err) {
+                    return res.status(400).json({
+                        "error_message": "error loading data", 
+                        "error_description": err
+                    });
+                } else {
+                    return res.json({place_id: result.rows[0].place_id});               
+                }
+                done();
+            });        
+
+
+        // client.query().on('end', function(result) {
+        //     done();
+        //     console.log("result", result);
+        //     if (err)
+        //     return res.status(400).json({
+        //         "error_message": "error loading data", 
+        //         "error_description": err
+        //     });
+        //     return res.json({place_id: result.rows[0].place_id});
+        // });    
+    });
+});
+
+router.post('/place/:place_id', function(req, res, next) {
+    console.log("edit place", req.body);
+});
 
 router.get('/place/:place_id', function(req, res, next) {
     pg.connect(connectionString, function(err, client, done) {
@@ -202,6 +250,90 @@ router.get('/hunt/:hunt_id', function(req, res, next) {
         }); 
     });
 });
+
+router.get('/timeline', function(req, res, next) {
+    pg.connect(connectionString, function(err, client, done) {
+        var jsonResults = {};
+        jsonResults.events = [];
+    
+        var photoQuery = function(callback){
+            client.query("select p.photo_id, p.image_file_name, p.title, a.name, pf.created_date, EXTRACT(EPOCH FROM pf.created_date) * 1000 as timestamp " +
+                "from photo p, account a, photo_found pf " +
+                "where pf.photo_id = p.photo_id and pf.account_id = a.account_id " +
+                "order by pf.created_date desc limit 10").on('row', function(row) {
+                row.image_url = cloudfront_base + row.image_file_name;
+                jsonResults.events.push(row);
+            }).on('end', function(result) {
+                done();
+                if (err)
+                    return callback(err);
+                console.log("completed photoQuery");
+                callback(null, result);
+            });
+        }
+
+        async.parallel([
+            photoQuery
+        ], function(err, results) {
+            if (err)
+                return res.status(400).json({
+                    "error_message": "error loading data", 
+                    "error_description": err
+                });
+            return res.json(jsonResults);
+        }); 
+    });
+});
+
+
+router.get('/accounts', function(req, res, next) {
+    pg.connect(connectionString, function(err, client, done) {
+        var jsonResults = {};
+        jsonResults.accounts = [];
+    
+        var photoQuery = function(callback){
+            client.query("select account_id, email, name from account").on('row', function(row) {
+                jsonResults.accounts.push(row);
+            }).on('end', function(result) {
+                done();
+                if (err)
+                    return callback(err);
+                console.log("completed photoQuery");
+                callback(null, result);
+            });
+        }
+
+        async.parallel([
+            photoQuery
+        ], function(err, results) {
+            if (err)
+                return res.status(400).json({
+                    "error_message": "error loading data", 
+                    "error_description": err
+                });
+            return res.json(jsonResults);
+        }); 
+    });
+});
+
+
+
+
+
+router.post('/upload', function(req, res) {
+    console.log("upload", req);
+    fs.readFile(req.files.displayImage.path, function (err, data) {
+        var params = {Bucket: 'lavahound-hunts', Key: 'key', Body: data};
+        s3.upload(params, options, function(err, data) {
+          console.log(err, data);
+        });
+      // var newPath = __dirname + "/uploads/uploadedFileName";
+      // fs.writeFile(newPath, data, function (err) {
+      //   res.redirect("back");
+      // });
+    });
+});
+
 
 router.post('/sign-out', function(req, res) {
 

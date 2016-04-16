@@ -3,6 +3,8 @@
     
     lavahound.app.controller("ApplicationController", function($scope, $location, accountService) {
         $scope.isSignedIn = true;
+
+        $scope.selectedSection = "dashboard";
         
 		$scope.$on("$routeChangeSuccess", function($currentRoute, $previousRoute) {
 			$scope.username = accountService.signedInUser();

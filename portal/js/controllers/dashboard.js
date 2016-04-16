@@ -21,6 +21,9 @@
 		}).when('/timeline', {
 			templateUrl : '/js/partials/timeline.html',
 			controller : 'DashboardTimelineController'
+		}).when('/accounts', {
+			templateUrl : '/js/partials/accounts.html',
+			controller : 'DashboardAccountController'
 		}).when('/account/:programId', {
 			templateUrl : '/js/partials/dashboard/program/dhi.html',
 			controller : 'DashboardController'
@@ -60,10 +63,75 @@
 
 	});
 
-	lavahound.app.controller("DashboardPlacesController", function($scope, $timeout, $http, $q, $log, $routeParams, $location, dashboardService, accountService) {
+	lavahound.app.controller("DashboardTimelineController", function($scope, $http, $q, $log, $routeParams, $location, dashboardService, accountService) {
+		
+		$scope.events = [];
+
+
+		$scope.formatDateFromNow = function(event_time){
+			return moment(event_time).fromNow()
+		}
+
+		function loadEvents() {
+			var options = {
+				params : {
+					companyId : 1
+				}
+			};
+
+			dashboardService.findEventTimeline(options).promise.then(function(response) {
+				console.log(response);
+				$scope.events = response.data.events;
+			});
+		}
+		loadEvents();
+
+	});
+
+
+
+	lavahound.app.controller("DashboardPlacesController", function($scope, $timeout, $http, $q, $log, $routeParams, $location, $modal, dashboardService, accountService) {
 		
 		$scope.places = [];	
 		
+		$scope.addPlace = function(){
+			console.log('add place');
+			//"place_id":"1002",
+			$scope.editPlace(
+				{
+				"name":"New Place",
+				"description":"Tell us about your new place",
+				"image_file_name":"image-not-available.gif",
+				"hunt_count":0,
+				"image_url":"https://s3.amazonaws.com/lv-place-logos/image-not-available.gif"
+			});
+
+		}
+
+		$scope.editPlace = function(place){
+			console.log('add place');
+			var modalInstance = $modal.open({
+					templateUrl : '/js/partials/places/editPlace.html',
+					controller : 'EditPlaceController',
+					size : 'lg',
+					resolve : {
+						place : function() {
+							return place;
+						},
+						enabled : function() {
+							return true;
+						}
+					}
+				});
+
+				modalInstance.result.then(function(success) {
+
+				}, function() {
+					$log.info('Modal dismissed at: ' + new Date());
+				});
+
+				return modalInstance;			
+		}
 
 		function loadPlaces() {
 			var options = {
@@ -203,7 +271,119 @@
 
 	}]);	
 
-	lavahound.app.controller("EditEntryController", function($scope, $timeout, $http, $q, $log, $routeParams, $location, dashboardService, accountService) {
+	lavahound.app.controller("EditPlaceController", [ "$scope", "$modalInstance", "$http", "$q", "$log","$routeParams", "$location", "$timeout", "Upload", "dashboardService",
+		"accountService", "place",
+		function($scope,  $modalInstance, $http, $q, $log, $routeParams, $location, $timeout, Upload, dashboardService, accountService, place) {
+		$scope.place = place;
+		console.log("place", place);
+
+		$scope.editSaveLabel = "Save & Continue";
+
+	    $scope.myImage='';
+	    $scope.myCroppedImage='';
+		$scope.cancel = function() {
+			$modalInstance.dismiss('cancel');
+		};
+
+	$scope.steps = [
+      { number: 1, name: 'Add Place Details' },
+      { number: 2, name: 'Upload Image' },
+      ];
+    
+    $scope.currentStep = angular.copy($scope.steps[0]);
+    
+    $scope.cancel = function() {
+      $modalInstance.dismiss('cancel');
+    };
+    
+    $scope.nextStep = function() {
+      // Perform current step actions and show next step:
+      // E.g. save form data
+      
+      var nextNumber = $scope.currentStep.number;
+      if (nextNumber === 1){
+      	saveStep1();
+      }else if (nextNumber === 2){
+      	saveStep2();
+      }
+
+    };
+
+		function saveStep1() {
+			var options = {
+				params : {
+					place : $scope.place
+				}
+			};
+			dashboardService.savePlace(options).promise.then(function(response) {
+
+			}, function(reason) {
+
+			});
+
+			$scope.currentStep = angular.copy($scope.steps[1]);
+      		$scope.stepName = $scope.currentStep.name;
+			$timeout(function() {
+		    	 angular.element(document.querySelector('#fileInput')).on('change',handleFileSelect);	        
+	    	}, 500);
+			// if (angular.isDefined($scope.parentUnit) && $scope.parentUnit !== null)
+			// 	$scope.unit.parentUnitId = $scope.parentUnit.unitId;
+			// $scope.unit.managerId = $scope.manager ? $scope.manager.accountId : null;
+			// $scope.unit.locationId = $scope.location.locationId;
+			
+			// adminService.createUnit($scope.unit).promise.then(function(response) {
+			// 	$modalInstance.close($scope.account);
+			// 	accountService.loadManagers();
+			// 	accountService.loadLocations();			
+			// 	$route.reload();
+			// }, function(reason) {
+			// 	$scope.errorMsg = reason.data.description;
+			// 	$scope.formError = true;
+			// 	noble.showErrors(reason.data, $scope);
+			// });
+		};
+
+		function saveStep2() {
+	        $modalInstance.dismiss('cancel');
+		};
+
+	    var handleFileSelect=function(evt) {
+	      var file=evt.currentTarget.files[0];
+	      var reader = new FileReader();
+     		console.log("handleFileSelect");
+	      reader.onload = function (evt) {
+	        $scope.$apply(function($scope){
+	          $scope.myImage=evt.target.result;
+	          console.log($scope.myImage);
+	        });
+	      };
+	      reader.readAsDataURL(file);
+	    };
+
+
+		$scope.upload = function (dataUrl, name) {
+	        Upload.upload({
+	            url: 'api/upload',
+	            data: {
+	                file: Upload.dataUrltoBlob(dataUrl, name)
+	            },
+	        }).then(function (response) {
+	            $timeout(function () {
+	                $scope.result = response.data;
+	            });
+	        }, function (response) {
+	            if (response.status > 0) $scope.errorMsg = response.status 
+	                + ': ' + response.data;
+	        }, function (evt) {
+	            $scope.progress = parseInt(100.0 * evt.loaded / evt.total);
+	        });
+	    }
+		
+	}]);
+
+	lavahound.app.controller("EditEntryController", [ "$scope", "$http", "$q", "$log","$routeParams", "$location", "Upload", "dashboardService",
+		"accountService",
+		function($scope, $http, $q, $log, $routeParams, $location, Upload, dashboardService, accountService) {
 	
 		$scope.editSaveLabel = "Edit";
 
@@ -224,12 +404,26 @@
 	    };
 	    angular.element(document.querySelector('#fileInput')).on('change',handleFileSelect);
 
-		// $timeout(function() {
-  //           console.log(document.querySelector('#fileInput'));
-			// angular.element(document.querySelector('#fileInput')).on('change',handleFileSelect);
-    	// }, 1000);
+
+		$scope.upload = function (dataUrl, name) {
+	        Upload.upload({
+	            url: 'api/upload',
+	            data: {
+	                file: Upload.dataUrltoBlob(dataUrl, name)
+	            },
+	        }).then(function (response) {
+	            $timeout(function () {
+	                $scope.result = response.data;
+	            });
+	        }, function (response) {
+	            if (response.status > 0) $scope.errorMsg = response.status 
+	                + ': ' + response.data;
+	        }, function (evt) {
+	            $scope.progress = parseInt(100.0 * evt.loaded / evt.total);
+	        });
+	    }
 		
-	});
+	}]);
 	
 	// ***** -------------------- CRAP BELOW HERE ------------------
 	

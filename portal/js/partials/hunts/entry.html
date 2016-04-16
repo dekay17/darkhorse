@@ -14,13 +14,22 @@
 	<div class="alert alert-danger" role="alert"  ng-show="formError">{{errorMsg}}</div>
 	<form novalidate class="form-horizontal css-form" name="form">
 
-	<div>Select an image file: <input type="file" id="fileInput" /></div>
-  	<div class="cropArea pull-left">
-  		<img-crop
-   			image="myImage"
-   			result-image="myCroppedImage" area-type="square"></img-crop>
-  	</div>
-  	<div class="pull-right" style><img class="originalArea" ng-src="{{myCroppedImage}}" /></div>
+		<div>Select an image file: <input type="file" id="fileInput" /></div>
+	  	<div class="cropArea pull-left">
+	  		<img-crop
+	   			image="myImage"
+	   			result-image="myCroppedImage" area-type="square"></img-crop>
+	  	</div>
+	  	<div class="pull-right" style><img class="originalArea" ng-src="{{myCroppedImage}}" /></div>
+	  	<div class="clearfix">
+	        <button ng-click="upload(myCroppedImage, picFile.name)">Submit</button> 
+	            
+	        <span class="progress" ng-show="progress >= 0">
+	          <div style="width:{{progress}}%" ng-bind="progress + '%'"></div>
+	        </span>
+	        <span ng-show="result">Upload Successful</span>
+	        <span class="err" ng-show="errorMsg">{{errorMsg}}</span>
+	  	</div>
 		<div class="control-group">
 			<label class="control-label" for="description">Description</label>
 			<div class="controls">

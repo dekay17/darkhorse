@@ -7,7 +7,8 @@ var router = express.Router();
 var pg = require('pg');
 pg.defaults.poolSize = 20;
 
-var connectionString = process.env.DATABASE_URL || 'postgres://lavahound:h0und@localhost:5432/lavahound';
+//var connectionString = process.env.DATABASE_URL || 'postgres://lavahound:h0und@localhost:5432/lavahound';
+var connectionString = process.env.DATABASE_URL || 'postgres://lavahound:lavahound@107.21.239.118:5432/lavahound';
 
 var cloudfront_base = "https://s3.amazonaws.com/lavahound-hunts/";
 var user_icon_base = "https://s3.amazonaws.com/user-icons/";
