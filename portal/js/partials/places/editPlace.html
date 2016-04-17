@@ -5,7 +5,8 @@
   <form role="form">
     <div class="row">
       <div class="col-md-12">
-
+        <div class="alert alert-danger" role="alert"  ng-show="formError">{{errorMsg}}</div>
+  
         <div ng-switch="currentStep.number">
           <div ng-switch-when="1">
             <ng-include src="'/js/partials/places/EditPlaceStep1.html'"></ng-include>

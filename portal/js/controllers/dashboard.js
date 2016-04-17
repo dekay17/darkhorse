@@ -290,8 +290,11 @@
       { number: 2, name: 'Upload Image' },
       ];
     
+
     $scope.currentStep = angular.copy($scope.steps[0]);
-    
+
+    $scope.stepName = $scope.currentStep.name;
+
     $scope.cancel = function() {
       $modalInstance.dismiss('cancel');
     };
@@ -315,31 +318,18 @@
 					place : $scope.place
 				}
 			};
-			dashboardService.savePlace(options).promise.then(function(response) {
-
-			}, function(reason) {
-
-			});
-
-			$scope.currentStep = angular.copy($scope.steps[1]);
-      		$scope.stepName = $scope.currentStep.name;
-			$timeout(function() {
-		    	 angular.element(document.querySelector('#fileInput')).on('change',handleFileSelect);	        
-	    	}, 500);
-			// if (angular.isDefined($scope.parentUnit) && $scope.parentUnit !== null)
-			// 	$scope.unit.parentUnitId = $scope.parentUnit.unitId;
-			// $scope.unit.managerId = $scope.manager ? $scope.manager.accountId : null;
-			// $scope.unit.locationId = $scope.location.locationId;
-			
-			// adminService.createUnit($scope.unit).promise.then(function(response) {
-			// 	$modalInstance.close($scope.account);
-			// 	accountService.loadManagers();
-			// 	accountService.loadLocations();			
-			// 	$route.reload();
+			// dashboardService.savePlace(options).promise.then(function(response) {
+			// 	$scope.place.place_id = response.place_id;
+				$scope.currentStep = angular.copy($scope.steps[1]);
+	      		$scope.stepName = $scope.currentStep.name;
+		      	$scope.place.place_id = 1009;
+				$scope.place.image_file_name  = guid()
+				$timeout(function() {
+			    	 angular.element(document.querySelector('#fileInput')).on('change',handleFileSelect);	        
+		    	}, 500);				
 			// }, function(reason) {
-			// 	$scope.errorMsg = reason.data.description;
-			// 	$scope.formError = true;
-			// 	noble.showErrors(reason.data, $scope);
+			// 	$scope.errorMsg('whoops something went wrong');
+			// 	console.log(reason);
 			// });
 		};
 
@@ -360,12 +350,21 @@
 	      reader.readAsDataURL(file);
 	    };
 
+	    function guid(){
+	    	return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    			var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+    			return v.toString(16);
+			});
+	    } 
 
-		$scope.upload = function (dataUrl, name) {
+	    console.log(guid());
+
+		$scope.upload = function (dataUrl) {
+			console.log(dataUrl);
 	        Upload.upload({
 	            url: 'api/upload',
 	            data: {
-	                file: Upload.dataUrltoBlob(dataUrl, name)
+	                file: Upload.dataUrltoBlob(dataUrl, $scope.place.image_file_name + ".jpg")
 	            },
 	        }).then(function (response) {
 	            $timeout(function () {

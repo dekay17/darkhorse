@@ -1,16 +1,13 @@
-<div class="modal-header">
-	Select Image
-</div>
 <div class="modal-body">
-	<div class="alert alert-danger" role="alert"  ng-show="formError">{{errorMsg}}</div>
-	<div class="pull-right clearfix" id="photo-selector">
-		<div id="photo-display">
-			<img class="photo" ng-src="{{entry.image_url}}" />
-		</div>
-	</div>
 	<form novalidate class="form-horizontal css-form" name="form">
+		<div>Select an image file:<input type="file" id="fileInput" /></div>
 
-		<div>Select an image file: <input type="file" id="fileInput" /></div>
+		<div class="pull-right clearfix" id="photo-selector">
+			<div id="photo-display">
+				<img class="photo" ng-src="{{entry.image_url}}" />
+			</div>
+		</div>
+
 	  	<div class="cropArea pull-left">
 	  		<img-crop
 	   			image="myImage"
@@ -18,7 +15,7 @@
 	  	</div>
 	  	<div class="pull-right" style><img class="originalArea" ng-src="{{myCroppedImage}}" /></div>
 	  	<div class="clearfix">
-	        <button ng-click="upload(myCroppedImage, picFile.name)">Submit</button> 
+	        <button ng-click="upload(myCroppedImage)">Submit</button> 
 	            
 	        <span class="progress" ng-show="progress >= 0">
 	          <div style="width:{{progress}}%" ng-bind="progress + '%'"></div>
@@ -26,25 +23,5 @@
 	        <span ng-show="result">Upload Successful</span>
 	        <span class="err" ng-show="errorMsg">{{errorMsg}}</span>
 	  	</div>
-		<div class="control-group">
-			<label class="control-label" for="description">Description</label>
-			<div class="controls">
-				<input class="form-control" type="text" id="description" placeholder="Description" ng-model="entry.description" ng-disabled="enabled" required>
-			</div>
-		</div>
-		<div class="control-group">
-			<p>&nbsp;</p>
-			<div class="checkbox">
-        		<label>
-          			<input type="checkbox" ng-disabled="enabled" ng-model="account.active"> Active
-        		</label>
-      		</div>
-		</div>	
 	</form>
-</div>
-<div class="modal-footer">
-	<button class="btn btn-danger pull-left" ng-show="!newAccount" ng-click="resetCredentials()">Reset Credentials</button>
-	
-	<button class="btn btn-primary" ng-click="edit()">{{ editSaveLabel }}</button>
-	<button class="btn btn-warning" ng-click="cancel()">Cancel</button>
 </div>

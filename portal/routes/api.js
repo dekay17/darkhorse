@@ -2,6 +2,20 @@ var async = require('async');
 var fs = require('fs');
 
 var express = require('express');
+var multer  = require('multer')
+
+var storage = multer.diskStorage({
+  destination: './uploads/',
+    filename: function (req, file, cb) {
+        cb(null, file.originalname)
+    }
+})
+
+var upload = multer({ storage: storage});
+
+var ExifImage = require('exif').ExifImage;
+var geolib = require('geolib');
+
 var router = express.Router();
 
 var pg = require('pg');
@@ -136,18 +150,6 @@ router.post('/place/', function(req, res, next) {
                 }
                 done();
             });        
-
-
-        // client.query().on('end', function(result) {
-        //     done();
-        //     console.log("result", result);
-        //     if (err)
-        //     return res.status(400).json({
-        //         "error_message": "error loading data", 
-        //         "error_description": err
-        //     });
-        //     return res.json({place_id: result.rows[0].place_id});
-        // });    
     });
 });
 
@@ -320,18 +322,39 @@ router.get('/accounts', function(req, res, next) {
 
 
 
-router.post('/upload', function(req, res) {
-    console.log("upload", req);
-    fs.readFile(req.files.displayImage.path, function (err, data) {
-        var params = {Bucket: 'lavahound-hunts', Key: 'key', Body: data};
-        s3.upload(params, options, function(err, data) {
-          console.log(err, data);
-        });
-      // var newPath = __dirname + "/uploads/uploadedFileName";
-      // fs.writeFile(newPath, data, function (err) {
-      //   res.redirect("back");
-      // });
+router.post('/upload', upload.single('file'), function(req, res) {
+    console.log("upload", req.file.path);
+
+    new ExifImage({ image : req.file.path }, function (error, exifData) {
+        if (error){
+            console.log('Error: '+error.message);
+            return res.status(500).json({
+                    "error": error.message
+            });
+        }else{
+            var sexagesimalLat = exifData.gps.GPSLatitude[0] + "° " + exifData.gps.GPSLatitude[1] +"' " + exifData.gps.GPSLatitude[2] + "\" " + exifData.gps.GPSLatitudeRef;
+            var sexagesimalLng = exifData.gps.GPSLongitude[0] + "° " + exifData.gps.GPSLongitude[1] +"' " + exifData.gps.GPSLongitude[2] + "\" " + exifData.gps.GPSLongitudeRef;
+            var lat = geolib.sexagesimal2decimal(sexagesimalLat);
+            var lng = geolib.sexagesimal2decimal(sexagesimalLng);
+            console.log(lat + "," + lng + "\t" + path.basename(filename)); 
+            // console.log("39.955846, -75.182942");
+            console.log(exifData.gps); 
+                return res.status(200).json({
+                    "filename": req.file.filename 
+                });
+
+        }
     });
+    // fs.readFile(req.files.file.path, function (err, data) {
+    //     var params = {Bucket: 'lavahound-hunts', Key: 'key', Body: data};
+    //     s3.upload(params, options, function(err, data) {
+    //       console.log(err, data);
+    //     });
+    //   // var newPath = __dirname + "/uploads/uploadedFileName";
+    //   // fs.writeFile(newPath, data, function (err) {
+    //   //   res.redirect("back");
+    //   // });
+    // });
 });
 
 
